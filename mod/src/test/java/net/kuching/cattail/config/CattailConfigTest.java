@@ -23,6 +23,19 @@ class CattailConfigTest {
         assertEquals(true, empty.get("enabled"));
         assertEquals(false, empty.get("forceRelay"));
         assertEquals(true, empty.get("shareSpecs"));
+        assertEquals(0, (Integer) empty.get("serverListIconOffsetX"));
+        assertEquals(0, (Integer) empty.get("serverListIconOffsetY"));
+    }
+
+    @Test
+    void serverListIconOffsetsAcceptMinus200To200() {
+        for (String key : new String[] {"serverListIconOffsetX", "serverListIconOffsetY"}) {
+            assertTrue(CattailConfig.SPEC.isCorrect(configWith(key, -200)), key + " = -200");
+            assertTrue(CattailConfig.SPEC.isCorrect(configWith(key, -16)), key + " = -16");
+            assertTrue(CattailConfig.SPEC.isCorrect(configWith(key, 200)), key + " = 200");
+            assertFalse(CattailConfig.SPEC.isCorrect(configWith(key, -201)), key + " = -201");
+            assertFalse(CattailConfig.SPEC.isCorrect(configWith(key, 201)), key + " = 201");
+        }
     }
 
     @Test

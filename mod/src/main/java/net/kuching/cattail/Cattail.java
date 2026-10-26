@@ -2,8 +2,10 @@ package net.kuching.cattail;
 
 import java.time.LocalDate;
 import net.kuching.cattail.config.CattailConfig;
+import net.kuching.cattail.config.ServerListConfig;
 import net.kuching.cattail.deploy.Deployment;
 import net.kuching.cattail.deploy.DeploymentStartupLog;
+import net.kuching.cattail.serverlist.ServerListInfoSource;
 import net.kuching.cattail.specs.SpecsClient;
 import net.kuching.cattail.specs.SpecsNetworking;
 import net.kuching.cattail.update.UpdateNetworking;
@@ -20,9 +22,10 @@ import org.slf4j.LoggerFactory;
 /**
  * Entry point on both sides (one jar for players and the server). The server side registers the
  * {@code cattail:sysinfo} channel and logs the specs line, and sends its version on
- * {@code cattail:version} so an older client can show an update notice; a dedicated server also runs the
+ * {@code cattail:version} so an older client can show an update notice; a dedicated server also
+ * registers {@code cattail-server.toml} and puts its server-list info on every status, runs the
  * one-shot Plasmo Voice config check and warns in the log when the jar is not set up or its key
- * expires soon; everything else (config, helper, mixins) is client-only.
+ * expires soon; the client config, the helper and the client mixins are client-only.
  */
 @Mod(Cattail.MOD_ID)
 public final class Cattail {
@@ -32,6 +35,7 @@ public final class Cattail {
 
     public Cattail(IEventBus modBus, ModContainer container) {
         modBus.addListener(SpecsNetworking::register);
+        modBus.addListener(SpecsNetworking::onConfigurationStart);
         modBus.addListener(UpdateNetworking::register);
         NeoForge.EVENT_BUS.addListener(UpdateNetworking::onPlayerLoggedIn);
         if (FMLEnvironment.dist.isClient()) {
@@ -39,8 +43,11 @@ public final class Cattail {
             modBus.addListener(CattailConfig::onLoading);
             modBus.addListener(CattailConfig::onReloading);
             NeoForge.EVENT_BUS.addListener(SpecsClient::onLoggingIn);
+            SpecsClient.install();
         }
         if (FMLEnvironment.dist.isDedicatedServer()) {
+            container.registerConfig(ModConfig.Type.COMMON, ServerListConfig.SPEC, "cattail-server.toml");
+            ServerListInfoSource.install(() -> ServerListConfig.current(UpdateNetworking.ownVersion(), LOGGER));
             VoiceServerStartupCheck.register();
             DeploymentStartupLog.log(Deployment.bundled(), LocalDate.now(), LOGGER);
         }

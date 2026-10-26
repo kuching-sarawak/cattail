@@ -3,12 +3,19 @@
   "package": "net.kuching.cattail.mixin",
   "compatibilityLevel": "JAVA_21",
   "minVersion": "0.8",
+  "mixins": [
+    "MinecraftServerMixin",
+    "ServerStatusAccessor",
+    "ServerStatusMixin"
+  ],
   "client": [
     "ConnectScreenMixin",
     "ConnectScreenRunnableMixin",
     "JoinMultiplayerScreenMixin",
+    "ServerDataMixin",
     "ServerNameResolverMixin",
     "ServerSelectionListEntryMixin",
+    "ServerStatusPingerListenerMixin",
     "ServerStatusPingerMixin"
   ],
   "injectors": {

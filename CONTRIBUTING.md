@@ -10,7 +10,8 @@ source scripts/env.sh
 ```
 
 What the host needs (curl, tar and a SHA-256 tool) is in the header of
-`scripts/install-toolchain.sh`; the headless client smoke test also needs Xvfb (Linux only).
+`scripts/install-toolchain.sh`; on Linux the client smoke test also needs Xvfb (on macOS it runs
+on the desktop, where its game window opens until the test stops it).
 Build flags are described in `scripts/build.sh`, the deployment file in
 `deployment.properties.example`, and the probe build's targets (the only `build.conf` key) in
 `build.conf.example`.
@@ -24,9 +25,11 @@ cd helper && go build ./... && go vet ./... && staticcheck ./... && go test ./..
 cd mod && ./gradlew test -PskipHelper
 ```
 
-- `go vet` and `staticcheck` must be clean. `scripts/build.sh` also runs `go vet` with
-  `GOOS=windows`, and with `--probe` it runs `go vet` and `staticcheck` with `-tags probe`;
-  run those by hand when you touch platform- or probe-specific code.
+- `go vet` and `staticcheck` must be clean. `scripts/build.sh` also runs `go vet` once per
+  helper target with `CGO_ENABLED=0` and that target's `GOOS` and `GOARCH` (`windows/amd64`,
+  `linux/amd64`, `darwin/arm64`), and with `--probe` it runs `go vet` and `staticcheck` with
+  `-tags probe`; run those by hand when you touch platform- or probe-specific code, for example
+  `GOOS=darwin GOARCH=arm64 CGO_ENABLED=0 go vet ./...` in `helper/`.
 - Java compiles with `-Xlint:deprecation -Werror`.
 - After any change to `helper/go.mod`, run `scripts/gen-helper-notices.sh` and commit the
   regenerated `helper/THIRD_PARTY_LICENSES.md`; `scripts/build.sh` fails when it is stale.
@@ -34,7 +37,7 @@ cd mod && ./gradlew test -PskipHelper
   `scripts/smoke-server.sh -PskipHelper`.
 - When touching `scripts/check-public.sh`, run `scripts/check-public-test.sh`.
 - When touching the release script (`scripts/release-public.sh`, maintainers only, not in the
-  public tree), run `scripts/release-public-test.sh`; it needs `zip`.
+  public tree), run `scripts/release-public-test.sh`; it needs `zip`, `perl` and `python3`.
 - When touching `README.md` or `PLAYERS.md`, run `scripts/readme-lint.sh README.md PLAYERS.md`;
   when touching the lint, run `scripts/readme-lint-test.sh`.
 - Changes to the helper's tailnet behaviour: run the opt-in live tests (`CATTAIL_TEST_TARGET`

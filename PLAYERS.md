@@ -6,10 +6,14 @@
 Cattail is one mod file. With it in your `mods` folder, the game connects to the server
 through a private network link that starts and stops with the game. You do not need a
 Tailscale account or any app, and the game runs without admin rights. Only the optional
-Firewall click in step 3 asks for an administrator.
+Windows Firewall click in step 3 asks for an administrator; macOS needs none, and on Linux none
+is expected (untested).
 
-**Windows (64-bit) only.** On macOS, Linux or Windows on ARM the mod stays idle and the
-connect screen says `Cattail supports Windows only`.
+**Windows x64, Linux x64 and macOS on Apple silicon only.** On anything else (Windows on ARM with
+an arm64 Java, an Intel Mac, Linux on ARM, or an x86-64 Java under Rosetta on an Apple silicon
+Mac) the mod stays idle and the connect screen says
+`Cattail supports Windows x64, Linux x64 and macOS on Apple silicon only`. An x64 Java on Windows
+on ARM counts as Windows x64 and runs the x64 helper under emulation (untested).
 
 The server owner sends you the jar by private link. Do not share the jar or the link with
 anyone else: it works as a key to the server.
@@ -40,19 +44,43 @@ Multiplayer, **Add Server**, Server Address:
 Join it. While connecting, the screen shows `Starting Tailscale link…`, then
 `Connected via Tailscale (<server address>)`.
 
-In the server list, the server's row shows **Tailscale Tunnel** next to the ping bars once the
-list has pinged it: green while the link is up, grey while it is starting or idle. Hover over
-it to see the server's Tailscale address.
+In the server list, the server's row shows the Cattail icon, a small yellow cat, left of the
+player count once the list has pinged it. It is bright for a Cattail server and dim while
+Cattail's helper program is not ready yet; a bright icon alone does not mean the link is up.
+Hover over it to see the server's Cattail version, its Tailscale address (green while the link
+is up, grey otherwise) and any notes from the server owner.
 
-## 3. The one Windows Firewall prompt
+If another mod's icon on that row sits over Cattail's, move Cattail's icon with
+`serverListIconOffsetX` and `serverListIconOffsetY` in `config/cattail-client.toml` (in your
+instance folder; pixels, negative is left or up) and restart the game.
 
-The first time you open Multiplayer (with this server in the list) or join, Windows shows **"Windows Defender Firewall has blocked some features
-of this app"** for `cattail-helper.exe`. Tick both **Private networks** and **Public networks**
-and click **Allow access**. It only asks once.
+## 3. The firewall prompt
+
+The first time you open Multiplayer (with this server in the list) or join, Cattail's helper
+program starts, and your system's firewall may ask about it.
+
+### Windows
+
+Windows shows **"Windows Defender Firewall has blocked some features of this app"** for
+`cattail-helper.exe`. Tick both **Private networks** and **Public networks** and click
+**Allow access**. It only asks once.
 
 Allowing needs an administrator. On a standard (non-admin) Windows account, **Allow access**
 asks for an administrator's password. If you cannot give one, click **Cancel**: the game still
 works, but your traffic takes a slower relayed path.
+
+### macOS
+
+If the macOS firewall is on, macOS is expected to ask **"Do you want the application
+cattail-helper to accept incoming network connections?"** (not yet checked on a player's Mac; if
+the wording differs, answer it the same way). Click **Allow**: it should keep direct
+connections possible. If you click **Deny**, the game should still work, with your traffic on a
+slower relayed path. No administrator should be needed.
+
+### Linux
+
+Most desktop Linux installs ask nothing. A strict firewall that blocks UDP out can force the
+slower relayed path.
 
 ## When the server has a newer Cattail
 
@@ -71,10 +99,10 @@ you in the world hear you, and you hear them. There is nothing to install or set
   microphone, change volumes, or switch between push-to-talk and voice activation. You talk
   with the talk key shown in the Plasmo Voice menu. The key that opens the menu is listed
   under Options, Controls, Key Binds, in the Plasmo Voice group, as **Voice Settings**.
-- **Microphone permission.** If Windows asks whether Java or your launcher may use the
-  microphone, allow it. If the Plasmo Voice menu shows your microphone as not available, open
-  Windows Settings, Privacy & security, Microphone, and make sure microphone access is on and
-  desktop apps may use the microphone.
+- **Microphone permission.** If your system asks whether Java or your launcher may use the
+  microphone, allow it. On Windows, if the Plasmo Voice menu shows your microphone as not
+  available, open Windows Settings, Privacy & security, Microphone, and make sure microphone
+  access is on and desktop apps may use the microphone.
 - **Already using Plasmo Voice as a separate mod?** A separately installed Plasmo Voice jar
   whose version is within [2.1.17, 2.2) loads instead of the bundled copy (any other version
   stops the game from starting), but voice works reliably only when its version matches the
@@ -101,7 +129,7 @@ log.
 - Like any Tailscale connection, your public IP address and whether the link is direct or
   relayed are visible to the network's owner.
 - **Your PC specs**, if the server asks for them: CPU name, core and thread count, RAM,
-  graphics card name, its memory and driver version, Windows version, Java version, the
+  graphics card name, its memory and driver version, operating system version, Java version, the
   memory Minecraft may use, render distance, shaderpack name (Iris only), number of mods
   and the Cattail version. They are read on your PC and sent once per join, only to a server
   that asks for them (one that advertises the Cattail channel). They contain no IP address, no computer name and no serial numbers.
@@ -118,7 +146,7 @@ What the Cattail line on the connect screen means, and what to do:
 | `Starting Tailscale link…` | Wait, it changes by itself. |
 | `Connected via Tailscale (<server address>)` | The link is up; if the game still does not join, ask the server owner. |
 | `Tailscale link failed: <reason>` | Restart the game (this often helps after a network change); if the line comes back, ask the server owner and tell them the reason. |
-| `Cattail supports Windows only` | Join from a 64-bit Windows PC with an Intel or AMD processor. |
+| `Cattail supports Windows x64, Linux x64 and macOS on Apple silicon only` | Join from a supported PC: Windows or Linux on a 64-bit Intel or AMD processor, or a Mac with Apple silicon. On a Mac, the game must run on an Apple silicon (arm64) Java, not an Intel (x86-64) one under Rosetta. |
 | `This Cattail jar has not been set up by a server owner` | Ask the server owner, you need a new jar from them. |
 | `Cattail deployment file is invalid (<setting>)` | Ask the server owner, you need a new jar from them. |
 | `Server key expired, ask the server owner` | Ask the server owner, you need a new jar from them. |
@@ -131,13 +159,13 @@ shows no Cattail line at all: see the first two points below.
   Cattail does not run.
 - Still no Cattail line, in the right instance: your internet provider's DNS may hide the
   server's records. Ask the owner for the server's `forcedHosts` line. Open
-  `config/cattail-client.toml` in your instance folder with Notepad, replace the line that
-  starts with `forcedHosts` with the owner's line (it looks like
+  `config/cattail-client.toml` in your instance folder with a text editor (Notepad on Windows),
+  replace the line that starts with `forcedHosts` with the owner's line (it looks like
   `forcedHosts = ["mc.example.com=100.101.102.103"]`), save the file and restart the game.
 - The server says you are not whitelisted: ask the owner.
 - The owner may ask for your log files, all in the instance folder:
-  `cattail\helper.log`, `cattail\helper-crash.log` (if it exists) and `logs\latest.log`.
-  None of them contain the server's key.
+  `cattail/helper.log`, `cattail/helper-crash.log` (if it exists) and `logs/latest.log` (on
+  Windows the same folders show with backslashes). None of them contain the server's key.
 
 ## Uninstall
 

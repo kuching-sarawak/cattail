@@ -25,9 +25,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * One running {@code cattail-helper.exe}. Speaks the helper's stdout protocol: exactly one
- * {@code READY <port> <ipv4>} line first, then only {@code WARN <code> <detail>} /
- * {@code ERR <code> <detail>} lines. The helper exits on {@code QUIT} or stdin EOF.
+ * One running helper, the {@link HelperTarget#binaryName()} that {@link HelperInstaller} put in
+ * place. Speaks the helper's stdout protocol: exactly one {@code READY <port> <ipv4>} line
+ * first, then only {@code WARN <code> <detail>} / {@code ERR <code> <detail>} lines. The helper
+ * exits on {@code QUIT} or stdin EOF.
  *
  * <p>The environment passed to {@link #start} may carry secrets; it is handed to the child
  * process only and never logged. Arguments are logged.

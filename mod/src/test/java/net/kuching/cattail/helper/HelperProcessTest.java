@@ -19,7 +19,7 @@ import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.api.io.TempDir;
 
-@EnabledOnOs(OS.LINUX)
+@EnabledOnOs({OS.LINUX, OS.MAC})
 class HelperProcessTest {
 
     @TempDir

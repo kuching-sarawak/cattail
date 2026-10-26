@@ -52,9 +52,10 @@ scripts/build-mac.sh --deploy .secrets/deployment.properties
 The first run downloads Go (about 70 MB), the JDK (about 190 MB), staticcheck, Gradle and
 NeoForge, so allow ten minutes and keep the network on. Later runs reuse all of it.
 
-What runs: `go vet`, `staticcheck`, `go test`, the Gradle build with the Java tests, then the
-generic jar, then `inject` with your deployment file. The headless client smoke test is skipped
-on macOS (it needs Xvfb, Linux only); every other gate runs.
+What runs: `go vet`, `staticcheck`, `go test`, the Gradle build with the Java tests, the client
+smoke tests, then the generic jars, then `inject` with your deployment file. The client smoke
+tests start the game twice, with and without Plasmo Voice: each time a game window opens on
+your desktop and stays until the test stops it, so leave it alone while the build runs.
 `scripts/build-mac.sh --skip-tests --deploy .secrets/deployment.properties` skips the test
 suites for a quick build.
 
@@ -62,13 +63,15 @@ Output (`<version>` is the mod and Minecraft version, for example `0.1.0+mc1.21.
 your tag without `tag:`):
 
 ```
-dist/cattail-<version>.jar         generic: no key, not secret
-dist/cattail-<version>-<tag>.jar   yours: carries the key
+dist/cattail-<version>.jar                 generic: no key, not secret
+dist/cattail-<version>-novoice.jar         generic, without the nested Plasmo Voice
+dist/cattail-<version>-<tag>.jar           yours: carries the key
+dist/cattail-<version>-novoice-<tag>.jar   yours, without Plasmo Voice: carries the key
 dist/SHA256SUMS
 ```
 
 Without a `.git` folder the helper version ends in `+nogit` (for example `0.1.0+nogit`), which
-is fine for a test jar. The `-<tag>` jar holds your key: it is mode `600`; give it to your
+is fine for a test jar. The `-<tag>` jars hold your key: they are mode `600`; give one to your
 players privately and run it on your server.
 
 ## 4. Next time
@@ -87,5 +90,5 @@ Same folder, same command. If you unpack a new zip, copy `.secrets/` over from t
   Either way the generic jar was built.
 - "macOS cannot verify the developer" never appears: the toolchain is unpacked from tarballs
   by `tar`, which adds no quarantine flag.
-- A Gradle failure mentioning `helper/cattail-helper.exe` means the Go step did not run; read
-  the first error above it.
+- A Gradle failure `missing bundled helper resource(s)` means the Go step did not write the
+  helpers; read the first error above it.

@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 public final class Redirector {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(Redirector.class);
-    private static final Set<String> VISIBLE_UNROUTED = Set.of("helper-failed", "windows-only");
+    private static final Set<String> VISIBLE_UNROUTED = Set.of("helper-failed", "unsupported-platform");
     /**
      * Status key of a rejected deployment file, whose failure reason is
      * {@link HelperStartException#DEPLOYMENT_INVALID}{@code <key>}.
@@ -100,7 +100,7 @@ public final class Redirector {
                 r = instance;
                 if (r == null) {
                     r = new Redirector(productionDecider(Map.of()), new ManagerGateway(),
-                            Platform::isWindowsAmd64, () -> true);
+                            Platform::helperSupported, () -> true);
                     instance = r;
                 }
             }
@@ -270,8 +270,8 @@ public final class Redirector {
         }
         Route route = decided.get();
         if (!platformOk.getAsBoolean()) {
-            LOGGER.info("{} is a Cattail server, but the helper only runs on Windows x64", route.host());
-            setStatus(gen, new Status("windows-only", "", true));
+            LOGGER.info("{} is a Cattail server, but this jar has no helper for this OS and processor", route.host());
+            setStatus(gen, new Status("unsupported-platform", "", true));
             return original;
         }
         String target = route.target().getHostAddress();

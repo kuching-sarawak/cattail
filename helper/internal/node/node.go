@@ -137,6 +137,16 @@ type Dialer struct {
 	err  error
 }
 
+// inProcessOnly makes lc talk to the in-process tsnet backend and nothing else. Without
+// OmitAuth, every request first calls safesocket.LocalTCPPortAndToken, which on macOS runs
+// `lsof` in a subprocess to look for the Tailscale desktop app's token (a token the in-process
+// backend never asks for). That fork intermittently never returns in the child, which keeps
+// Apple's fork handlers spinning (Network.framework, then os_log), and the request, hence the
+// dial, waits on it forever: seen on macOS 26 as a join or a server-list ping that never
+// completes, with a second cattail-helper process at 100% CPU. OmitAuth is the documented
+// switch for a client whose Dial is set, as tsnet's is. Windows and Linux never take that path.
+func inProcessOnly(lc *local.Client) { lc.OmitAuth = true }
+
 // NewDialer returns a Dialer for srv. srv must have been brought Up.
 func NewDialer(srv *tsnet.Server) *Dialer { return &Dialer{srv: srv} }
 
@@ -146,7 +156,12 @@ func (d *Dialer) Dial(ctx context.Context, network, address string) (net.Conn, e
 	if err != nil {
 		return nil, fmt.Errorf("dial %s: need ip:port: %w", address, err)
 	}
-	d.once.Do(func() { d.lc, d.err = d.srv.LocalClient() })
+	d.once.Do(func() {
+		d.lc, d.err = d.srv.LocalClient()
+		if d.lc != nil {
+			inProcessOnly(d.lc)
+		}
+	})
 	if d.err != nil {
 		return nil, d.err
 	}

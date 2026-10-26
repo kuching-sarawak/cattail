@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Build the shippable Cattail jars: cross-compile the Windows helper, bundle it with its sha256
-# into the mod resources, build the mod, copy the two generic jars to dist/: the full jar
-# (cattail-<ver>+mc<mc>.jar, Plasmo Voice nested) and the no-voice jar (the same with the
-# -novoice suffix and no nested Plasmo Voice). A generic jar carries no key, tag or other
-# deployment value and is not secret; it needs no build.conf and nothing in .secrets/. With
-# --deploy each generic jar's own inject command writes a copy that carries the deployment file:
-# those copies hold the key, so they are owner-only and must never be shared.
+# Build the shippable Cattail jars: cross-compile the helpers (Windows x64, Linux x64, macOS
+# Apple silicon), bundle each with its sha256 into the mod resources, build the mod, copy the
+# two generic jars to dist/: the full jar (cattail-<ver>+mc<mc>.jar, Plasmo Voice nested) and
+# the no-voice jar (the same with the -novoice suffix and no nested Plasmo Voice). A generic
+# jar carries no key, tag or other deployment value and is not secret; it needs no build.conf
+# and nothing in .secrets/. With --deploy each generic jar's own inject command writes a copy
+# that carries the deployment file: those copies hold the key, so they are owner-only and must
+# never be shared.
 #
 #   scripts/build.sh [--deploy <file>] [--probe] [--skip-tests] [--allow-dirty]
 #
@@ -21,9 +22,9 @@
 #                    probe.targets from build.conf CATTAIL_PROBE_TARGETS (required with
 #                    --probe); both jar names get a "-probe" suffix; a dirty tree only adds
 #                    "-dirty" to the helper version
-#   --skip-tests     skip `go test`, the Gradle test task and the headless client smokes
-#                    (scripts/smoke-client.sh, with and without Plasmo Voice); vet + staticcheck
-#                    always run
+#   --skip-tests     skip `go test`, the Gradle test task and the client smokes
+#                    (scripts/smoke-client.sh, with and without Plasmo Voice; Linux and macOS
+#                    only); vet + staticcheck always run
 #   --allow-dirty    build a normal jar from uncommitted changes (helper version gets "-dirty");
 #                    without it a normal build refuses a dirty tree (untracked files ignored)
 #
@@ -40,6 +41,25 @@ CALLER_DIR="$(pwd)" # a relative --deploy path is relative to where the script w
 cd "$(dirname "$0")/.."
 REPO_ROOT="$(pwd)"
 HOST_OS="$(uname -s)"
+
+# Every helper the jar bundles, as GOOS/GOARCH: the one list here that drives vet, build, sha256
+# and summary. It mirrors HelperTarget in the mod, helperTargets in mod/build.gradle and
+# HELPER_ENTRIES in scripts/release-public.sh; all four change together, or the jar misses a
+# helper the mod looks for, or carries one the allowlists refuse. scripts/gen-helper-notices.sh
+# reads this line itself (keep it on one line, and assign or append HELPER_TARGETS nowhere
+# else: it refuses that), so the licence file needs no edit of its own. The mod's
+# HelperTargetBuildListTest reads this line too and fails unless HelperTarget matches it.
+HELPER_TARGETS=(windows/amd64 linux/amd64 darwin/arm64)
+# helper_dir <goos/goarch>: the resource directory name, e.g. windows-amd64.
+helper_dir() { printf '%s' "${1/\//-}"; }
+# helper_bin <goos/goarch>: the binary name (Windows gets .exe).
+helper_bin() {
+    if [[ "$1" == windows/* ]]; then
+        printf 'cattail-helper.exe'
+    else
+        printf 'cattail-helper'
+    fi
+}
 
 # sha256_list <file>...: "<hex>  <name>" per file, like sha256sum (shasum on macOS).
 if command -v sha256sum >/dev/null; then
@@ -62,7 +82,9 @@ while (( $# )); do
         --probe) PROBE=1 ;;
         --skip-tests) SKIP_TESTS=1 ;;
         --allow-dirty) ALLOW_DIRTY=1 ;;
-        -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+        # The header comment: every comment line after the first, up to the first other line. By
+        # its path from the repository root: $0 may be relative to the directory left by the cd.
+        -h|--help) awk 'NR == 1 { next } /^#/ { print; next } { exit }' "$REPO_ROOT/scripts/build.sh"; exit 0 ;;
         *) echo "build.sh: unknown argument: $1" >&2; exit 2 ;;
     esac
     shift
@@ -177,10 +199,11 @@ if [[ -n "$DEPLOY_FILE" ]]; then
     INJECTED_NOVOICE_JAR="$DIST_DIR/cattail-${MOD_VERSION}+mc${MC_VERSION}-novoice-${DEPLOY_TAG}${JAR_SUFFIX}.jar"
 fi
 
-# The helper resources hold only what this build writes (the exe and its sha256). Older builds
-# also wrote the key, the player tag and the probe targets there, and the specs prefix in
-# cattail/build.properties next to it; the mod no longer reads them, and a left-over copy would
-# ship inside the generic jar (the key with it), so they go before every build.
+# The helper resources hold only what this build writes (a directory per helper target with its
+# binary and sha256). Older builds also wrote the key, the player tag and the probe targets
+# there, and the specs prefix in cattail/build.properties next to it; the mod no longer reads
+# them, and a left-over copy would ship inside the generic jar (the key with it), so they go
+# before every build.
 rm -rf "$RES_DIR"
 LEGACY_PROPS_DIR="$REPO_ROOT/mod/src/main/resources/cattail"
 rm -f "$LEGACY_PROPS_DIR/build.properties"
@@ -189,9 +212,13 @@ rmdir "$LEGACY_PROPS_DIR" 2>/dev/null || true
 echo "==> helper $VER (probe=$PROBE, skip-tests=$SKIP_TESTS)"
 (
     cd helper
-    echo "--> go vet"
+    echo "--> go vet (host, then ${HELPER_TARGETS[*]})"
     go vet ./...
-    GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go vet ./...
+    # Per target, with the settings of its build below (GOOS, GOARCH, no cgo, the -tags probe of a
+    # --probe build): each sees its own GOOS-specific code.
+    for t in "${HELPER_TARGETS[@]}"; do
+        GOOS="${t%/*}" GOARCH="${t#*/}" CGO_ENABLED=0 go vet ${GO_TAGS[@]+"${GO_TAGS[@]}"} ./...
+    done
     echo "--> staticcheck"
     staticcheck ./...
     echo "--> third-party licence file"
@@ -205,24 +232,35 @@ echo "==> helper $VER (probe=$PROBE, skip-tests=$SKIP_TESTS)"
         echo "--> go test"
         go test ${GO_TAGS[@]+"${GO_TAGS[@]}"} ./...
     fi
-    echo "--> cross-compile windows/amd64"
-    mkdir -p "$RES_DIR"
     # Tailscale reports version.Long() to the control plane (shown in the admin console). Without
     # stamps it is derived from git metadata: "x.y.z-devYYYYMMDD-g<commit>" in a git tree,
     # "x.y.z-ERR-BuildInfo" from an unpacked zip. Stamp it like Tailscale's build_dist.sh does,
-    # and drop the VCS metadata (-buildvcs=false) so a git tree and a zip build the same exe.
+    # and drop the VCS metadata (-buildvcs=false) so a git tree and a zip build the same
+    # binaries.
     TS_VER="$(go list -m -f '{{.Version}}' tailscale.com)"
     TS_VER="${TS_VER#v}"
     [[ "$TS_VER" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "build.sh: unexpected tailscale.com version '$TS_VER'" >&2; exit 1; }
     TS_LONG="${TS_VER}-cattail-${VER//+/-}"
-    GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ${GO_TAGS[@]+"${GO_TAGS[@]}"} -trimpath -buildvcs=false \
-        -ldflags "-s -w -H windowsgui -X main.version=$VER \
-            -X tailscale.com/version.longStamp=$TS_LONG -X tailscale.com/version.shortStamp=$TS_VER" \
-        -o "$RES_DIR/cattail-helper.exe" ./cmd/cattail-helper
-    echo "    tailscale version reported by the helper: $TS_LONG"
+    for t in "${HELPER_TARGETS[@]}"; do
+        echo "--> cross-compile $t"
+        out_dir="$RES_DIR/$(helper_dir "$t")"
+        mkdir -p "$out_dir"
+        # -H windowsgui links the Windows helper as a GUI-subsystem exe, without a console (one
+        # reason main.go sends crash output to a file). -H picks the executable format, so it is
+        # for Windows only: on any other GOOS it links a Windows PE file, not that OS's binary.
+        gui=""
+        if [[ "$t" == windows/* ]]; then
+            gui="-H windowsgui "
+        fi
+        GOOS="${t%/*}" GOARCH="${t#*/}" CGO_ENABLED=0 go build ${GO_TAGS[@]+"${GO_TAGS[@]}"} -trimpath -buildvcs=false \
+            -ldflags "-s -w ${gui}-X main.version=$VER \
+                -X tailscale.com/version.longStamp=$TS_LONG -X tailscale.com/version.shortStamp=$TS_VER" \
+            -o "$out_dir/$(helper_bin "$t")" ./cmd/cattail-helper
+        # "<hex>  <name>" beside the binary; the mod checks the installed helper against it.
+        (cd "$out_dir" && sha256_list "$(helper_bin "$t")" > cattail-helper.sha256)
+    done
+    echo "    tailscale version reported by the helpers: $TS_LONG"
 )
-
-(cd "$RES_DIR" && sha256_list cattail-helper.exe > cattail-helper.sha256)
 
 echo "==> mod"
 GRADLE_ARGS=(clean build)
@@ -236,13 +274,18 @@ fi
 (cd mod && ./gradlew --no-daemon --warning-mode=fail "${GRADLE_ARGS[@]}")
 
 if (( ! SKIP_TESTS )); then
-    if [[ "$HOST_OS" == "Linux" ]]; then
-        echo "==> headless client smoke (Xvfb)"
+    # Linux runs the client under Xvfb, macOS on the desktop (a game window opens there).
+    if [[ "$HOST_OS" == "Linux" || "$HOST_OS" == "Darwin" ]]; then
+        SMOKE_WHERE="Xvfb"
+        if [[ "$HOST_OS" == "Darwin" ]]; then
+            SMOKE_WHERE="desktop"
+        fi
+        echo "==> client smoke ($SMOKE_WHERE)"
         scripts/smoke-client.sh
-        echo "==> headless client smoke without Plasmo Voice (Xvfb)"
+        echo "==> client smoke without Plasmo Voice ($SMOKE_WHERE)"
         scripts/smoke-client.sh --novoice
     else
-        echo "==> headless client smokes skipped: need Xvfb (Linux only); go test and the Gradle tests ran"
+        echo "==> client smokes skipped: they run on Linux (Xvfb) and macOS (desktop) only, not on $HOST_OS; go test and the Gradle tests ran"
     fi
 fi
 
@@ -310,10 +353,12 @@ if [[ -n "$INJECTED_JAR" ]]; then
     echo "deploy: ${INJECTED_NOVOICE_JAR#"$REPO_ROOT"/} (carries the key: owner-only, never commit or share)"
 fi
 echo "size:   $SIZE_BYTES bytes ($SIZE_MB MiB), no-voice $(wc -c < "$OUT_NOVOICE_JAR" | tr -d '[:space:]') bytes"
-echo "helper: $(cat "$RES_DIR/cattail-helper.sha256")"
+for t in "${HELPER_TARGETS[@]}"; do
+    echo "helper: $(helper_dir "$t") $(cat "$RES_DIR/$(helper_dir "$t")/cattail-helper.sha256")"
+done
 (cd "$DIST_DIR" && cat SHA256SUMS)
-if (( SIZE_BYTES < 18 * 1048576 || SIZE_BYTES > 22 * 1048576 )); then
-    echo "WARNING: jar size $SIZE_MB MiB is outside the expected 18-22 MiB range" >&2
+if (( SIZE_BYTES < 34 * 1048576 || SIZE_BYTES > 40 * 1048576 )); then
+    echo "WARNING: jar size $SIZE_MB MiB is outside the expected 34-40 MiB range (full jar, three helpers)" >&2
 fi
 if [[ -z "$DEPLOY_FILE" && -e "$REPO_ROOT/.secrets/deployment.properties" ]]; then
     echo "build.sh: NOTE: generic jar built; pass --deploy .secrets/deployment.properties to inject" >&2

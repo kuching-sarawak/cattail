@@ -2,6 +2,8 @@ package net.kuching.cattail.specs;
 
 import java.io.IOException;
 import java.io.Reader;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -12,6 +14,7 @@ import java.util.Optional;
 import java.util.Properties;
 import net.kuching.cattail.deploy.Deployment;
 import net.kuching.cattail.deploy.DeploymentSettings;
+import net.kuching.cattail.text.SafeText;
 import oshi.SystemInfo;
 import oshi.hardware.CentralProcessor;
 import oshi.hardware.GraphicsCard;
@@ -87,21 +90,22 @@ public record SysInfo(String cpu, int cores, int threads, long ramBytes, String 
         return prefix + "|";
     }
 
-    /** {@link #toLogLine(String, SysInfo, String)} with the bundled {@link #linePrefix()}. */
-    public static String toLogLine(String player, SysInfo i) {
+    /** {@link #toLogLine(String, SysInfo, String, String)} with the bundled {@link #linePrefix()}. */
+    public static String toLogLine(String player, SysInfo i, String ip) {
         String prefix = linePrefix();
-        return toLogLine(player, i, prefix.substring(0, prefix.length() - 1));
+        return toLogLine(player, i, prefix.substring(0, prefix.length() - 1), ip);
     }
 
     /**
      * The server console line:
-     * {@code <prefix>|<player>|<cpu>|<c>c/<t>t|<ram> GiB|<gpu>|<vram> GiB|<driver>|<os>|Java <ver>|heap <h> GiB|render <n>|<shaderpack or none>|<mods> mods|cattail <ver>}.
-     * Each field has {@code |} replaced by {@code /} and control characters by spaces and is at
+     * {@code <prefix>|<player>|<cpu>|<c>c/<t>t|<ram> GiB|<gpu>|<vram> GiB|<driver>|<os>|Java <ver>|heap <h> GiB|render <n>|<shaderpack or none>|<mods> mods|cattail <ver>|ip <addr>}.
+     * Each field has {@code |} replaced by {@code /} and control and format characters by spaces and is at
      * most {@value #MAX_FIELD} chars; the whole line is at most {@value #MAX_LINE_BYTES} UTF-8 bytes.
      *
      * @param prefix the line prefix without its {@code |}, e.g. {@value DeploymentSettings#DEFAULT_PREFIX}
+     * @param ip     the client's address as {@link #hostOf} gives it (a tailnet IP for a Cattail player)
      */
-    public static String toLogLine(String player, SysInfo i, String prefix) {
+    public static String toLogLine(String player, SysInfo i, String prefix, String ip) {
         String shader = field(i.shaderpack());
         List<String> fields = List.of(
                 field(player),
@@ -117,8 +121,23 @@ public record SysInfo(String cpu, int cores, int threads, long ramBytes, String 
                 "render " + i.renderDistance(),
                 shader.isEmpty() ? "none" : shader,
                 i.mods() + " mods",
-                field("cattail " + field(i.cattailVersion())));
+                field("cattail " + field(i.cattailVersion())),
+                field("ip " + field(ip)));
         return capBytes(prefix + "|" + String.join("|", fields), MAX_LINE_BYTES);
+    }
+
+    /**
+     * The bare IP of a connection's remote address: digits, hex digits, dots and colons only (no
+     * port, no brackets, no IPv6 zone), so a log parser can anchor on it; {@code unknown} for
+     * anything else (null, an unresolved address, a local pipe).
+     */
+    public static String hostOf(SocketAddress address) {
+        if (address instanceof InetSocketAddress inet && inet.getAddress() != null) {
+            String ip = inet.getAddress().getHostAddress();
+            int zone = ip.indexOf('%');
+            return zone < 0 ? ip : ip.substring(0, zone);
+        }
+        return "unknown";
     }
 
     /**
@@ -178,37 +197,17 @@ public record SysInfo(String cpu, int cores, int threads, long ramBytes, String 
         return t.startsWith(prefix) ? t.substring(prefix.length()).trim() : t;
     }
 
-    /** {@code |} to {@code /}, control characters to spaces, trimmed, cut to {@link #MAX_FIELD} chars. */
+    /**
+     * {@code |} to {@code /}, control and format characters to spaces ({@link SafeText#withoutControls}),
+     * trimmed, cut to {@link #MAX_FIELD} chars.
+     */
     static String field(String s) {
-        if (s == null) {
-            return "";
-        }
-        StringBuilder b = new StringBuilder(s.length());
-        s.codePoints().forEach(cp -> {
-            if (cp == '|') {
-                b.append('/');
-            } else if (Character.isISOControl(cp) || Character.getType(cp) == Character.LINE_SEPARATOR
-                    || Character.getType(cp) == Character.PARAGRAPH_SEPARATOR) {
-                b.append(' ');
-            } else {
-                b.appendCodePoint(cp);
-            }
-        });
-        return clip(b.toString().trim());
+        return clip(SafeText.withoutControls(s).replace('|', '/').trim());
     }
 
+    /** Cut to {@link #MAX_FIELD} chars, never inside a surrogate pair; null to empty. */
     private static String clip(String s) {
-        if (s == null) {
-            return "";
-        }
-        if (s.length() <= MAX_FIELD) {
-            return s;
-        }
-        int end = MAX_FIELD;
-        if (Character.isHighSurrogate(s.charAt(end - 1))) {
-            end--; // never split a surrogate pair
-        }
-        return s.substring(0, end);
+        return SafeText.clip(s, MAX_FIELD);
     }
 
     /** Whole GiB from 10 up, else one decimal without a trailing {@code .0}. */
@@ -221,18 +220,18 @@ public record SysInfo(String cpu, int cores, int threads, long ramBytes, String 
         return s.endsWith(".0") ? s.substring(0, s.length() - 2) : s;
     }
 
+    /** Cuts to at most {@code maxBytes} of UTF-8 in one pass over the code points, never inside a surrogate pair. */
     private static String capBytes(String s, int maxBytes) {
-        byte[] utf8 = s.getBytes(StandardCharsets.UTF_8);
-        if (utf8.length <= maxBytes) {
-            return s;
-        }
-        int end = s.length();
-        while (end > 0 && s.substring(0, end).getBytes(StandardCharsets.UTF_8).length > maxBytes) {
-            end--;
-            if (end > 0 && Character.isHighSurrogate(s.charAt(end - 1))) {
-                end--;
+        int bytes = 0;
+        for (int i = 0; i < s.length(); ) {
+            int cp = s.codePointAt(i);
+            int n = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+            if (bytes + n > maxBytes) {
+                return s.substring(0, i);
             }
+            bytes += n;
+            i += Character.charCount(cp);
         }
-        return s.substring(0, end);
+        return s;
     }
 }

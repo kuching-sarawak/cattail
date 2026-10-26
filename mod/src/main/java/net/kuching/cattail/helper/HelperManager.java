@@ -10,6 +10,7 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
@@ -30,6 +31,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
@@ -104,12 +106,13 @@ public final class HelperManager {
     }
 
     /**
-     * The helper build bundled in the mod jar: the exe and its sha256. The key, tag and probe
-     * targets are deployment values and come from {@link DeploymentSettings}.
+     * The helper build bundled in the mod jar for this platform: the binary, its sha256 and its
+     * file name ({@link HelperTarget#binaryName()}). The key, tag and probe targets are deployment
+     * values and come from {@link DeploymentSettings}.
      */
-    record HelperBundle(ExeSource exe, String sha256) {
+    record HelperBundle(ExeSource exe, String sha256, String binaryName) {
 
-        /** Opens a fresh stream of the bundled exe. */
+        /** Opens a fresh stream of the bundled binary. */
         @FunctionalInterface
         interface ExeSource {
             InputStream open() throws IOException;
@@ -177,14 +180,18 @@ public final class HelperManager {
         this.today = today;
     }
 
-    /** The session-wide manager, wired to the mod jar's resources and deployment file and the running game. */
+    /**
+     * The session-wide manager, wired to the mod jar's helper for this platform's
+     * {@link HelperTarget}, its deployment file and the running game.
+     */
     public static HelperManager get() {
         HelperManager m = instance;
         if (m == null) {
             synchronized (INSTANCE_LOCK) {
                 m = instance;
                 if (m == null) {
-                    m = new HelperManager(Platform.gameDir(), HelperManager::loadBundle, HelperProcess::start,
+                    m = new HelperManager(Platform.gameDir(),
+                            () -> HelperTarget.current().flatMap(HelperManager::loadBundle), HelperProcess::start,
                             () -> Minecraft.getInstance().getUser().getName(),
                             () -> forceRelaySetting.getAsBoolean());
                     instance = m;
@@ -546,7 +553,7 @@ public final class HelperManager {
         }
         Path exe;
         try (InputStream in = b.exe().open()) {
-            exe = HelperInstaller.install(gameDir, helperVersion(), in, b.sha256());
+            exe = HelperInstaller.install(gameDir, helperVersion(), b.binaryName(), in, b.sha256());
         } catch (IOException e) {
             LOGGER.error("Installing the Cattail helper failed", e);
             throw new HelperStartException("install-failed", OptionalLong.empty());
@@ -642,30 +649,42 @@ public final class HelperManager {
         return v;
     }
 
-    /** Loads the bundled helper exe and its hash, or empty when either is missing or invalid. */
-    private static Optional<HelperBundle> loadBundle() {
-        String exeRes = "/helper/cattail-helper.exe";
-        if (HelperManager.class.getResource(exeRes) == null) {
+    /**
+     * Loads {@code target}'s helper from {@code /helper/<resourceDir>/} in the mod jar: its binary
+     * and the hash in {@code cattail-helper.sha256} beside it. Empty, with the resource named in
+     * the log, when either is missing or the hash is malformed. Only the hash is read here; the
+     * binary is streamed by the installer, from a fresh stream per {@link HelperBundle.ExeSource#open}.
+     */
+    static Optional<HelperBundle> loadBundle(HelperTarget target) {
+        return loadBundle(target, HelperManager.class::getResource);
+    }
+
+    /**
+     * {@link #loadBundle(HelperTarget)} with {@code resources} mapping an absolute resource name to
+     * its URL, or to null when there is none; tests pass one that sees only their fixture, since the
+     * test classpath also holds the real helpers that scripts/build.sh writes.
+     */
+    static Optional<HelperBundle> loadBundle(HelperTarget target, Function<String, URL> resources) {
+        String dir = "/helper/" + target.resourceDir() + "/";
+        String exeRes = dir + target.binaryName();
+        String shaRes = dir + "cattail-helper.sha256";
+        URL exe = resources.apply(exeRes);
+        if (exe == null) {
             LOGGER.error("Cattail helper resource {} is missing from the mod jar", exeRes);
             return Optional.empty();
         }
-        Optional<String> shaLine = readFirstLine("/helper/cattail-helper.sha256");
+        URL shaUrl = resources.apply(shaRes);
+        Optional<String> shaLine = shaUrl == null ? Optional.empty() : readFirstLine(shaRes, shaUrl);
         if (shaLine.isEmpty()) {
-            LOGGER.error("Cattail helper hash resource is missing from the mod jar");
+            LOGGER.error("Cattail helper hash resource {} is missing from the mod jar, empty or unreadable", shaRes);
             return Optional.empty();
         }
         Optional<String> sha = parseSha256Line(shaLine.get());
         if (sha.isEmpty()) {
-            LOGGER.error("Cattail helper hash resource is malformed");
+            LOGGER.error("Cattail helper hash resource {} is malformed", shaRes);
             return Optional.empty();
         }
-        return Optional.of(new HelperBundle(() -> {
-            InputStream in = HelperManager.class.getResourceAsStream(exeRes);
-            if (in == null) {
-                throw new IOException(exeRes + " vanished from the mod jar");
-            }
-            return in;
-        }, sha.get()));
+        return Optional.of(new HelperBundle(exe::openStream, sha.get(), target.binaryName()));
     }
 
     /** The lower-case hash from a {@code sha256sum} line ({@code <64 hex>  <file>}), else empty. */
@@ -688,17 +707,14 @@ public final class HelperManager {
                 + " port=" + port + " ip=" + ip;
     }
 
-    private static Optional<String> readFirstLine(String resource) {
-        try (InputStream in = HelperManager.class.getResourceAsStream(resource)) {
-            if (in == null) {
-                return Optional.empty();
-            }
-            try (BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-                String line = r.readLine();
-                return line == null || line.isBlank() ? Optional.empty() : Optional.of(line.trim());
-            }
+    /** The trimmed first line of resource {@code name} at {@code url}; empty when blank or unreadable (logged). */
+    private static Optional<String> readFirstLine(String name, URL url) {
+        try (InputStream in = url.openStream();
+                BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            String line = r.readLine();
+            return line == null || line.isBlank() ? Optional.empty() : Optional.of(line.trim());
         } catch (IOException e) {
-            LOGGER.error("reading {} failed: {}", resource, e.toString());
+            LOGGER.error("reading {} failed: {}", name, e.toString());
             return Optional.empty();
         }
     }
