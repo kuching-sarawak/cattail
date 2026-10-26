@@ -1,0 +1,10 @@
+# Copy to deployment.properties, keep it private (it holds the key), then:
+#   java -jar cattail-<version>.jar inject deployment.properties
+# Auth key (recommended, up to 90 days, revocable) or OAuth client secret (no expiry):
+authkey=tskey-auth-EXAMPLE
+# Optional: the auth key's expiry date, so players see "key expired" instead of a raw error
+#authkey.expires=2026-12-31
+# The tag your tailnet policy grants the game port to
+tag=tag:mc-player
+# Optional: prefix of the specs line the server logs (A-Z, 0-9, _; 1-32 chars). Default CATTAILSPECS
+#specs.prefix=CATTAILSPECS

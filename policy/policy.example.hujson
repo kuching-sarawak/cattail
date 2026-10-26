@@ -1,0 +1,52 @@
+// Cattail example tailnet policy (HuJSON).
+//
+// Replace the placeholders before you use it:
+//   <tag>                  the player tag, e.g. tag:mc-player (as tag= in deployment.properties)
+//   <server-tailscale-ip>  the Tailscale IPv4 of your Minecraft server, e.g. 100.101.102.103
+//   <port>                 the server's game port, usually 25565
+//
+// This is not a complete policy. Merge the parts into your own policy as
+// policy/README.md explains. Keep your existing "ssh" and "nodeAttrs" sections
+// (and anything else you already have): they are left out here because Cattail
+// does not need or change them.
+{
+	// Who may apply the player tag. Admins only; the auth key (or OAuth client)
+	// you create for Cattail carries this tag.
+	"tagOwners": {
+		"<tag>": ["autogroup:admin"],
+	},
+
+	// A name for the server, so grants and tests read clearly.
+	"hosts": {
+		"minecraft": "<server-tailscale-ip>",
+	},
+
+	"grants": [
+		// Your own devices keep full access to each other. This replaces the
+		// default "src: * -> dst: *" rule, which would also let every player node
+		// reach every device on your tailnet. Remove the default rule.
+		{"src": ["autogroup:member"], "dst": ["autogroup:member"], "ip": ["*"]},
+
+		// Player nodes may reach the game port on the server and nothing else.
+		// No rule names <tag> as a destination, so nothing can connect to a
+		// player node.
+		// TCP for the game, UDP for voice (Plasmo Voice, bundled in Cattail, uses the game port).
+		{"src": ["<tag>"], "dst": ["minecraft"], "ip": ["tcp:<port>", "udp:<port>"]},
+	],
+
+	// Tailscale runs these every time the policy is saved and refuses a policy
+	// that fails one.
+	"tests": [
+		{
+			"src":    "<tag>",
+			"accept": ["minecraft:<port>"],
+			// Other ports on the server must stay closed to players. Add your
+			// other devices here too, e.g. "<another-device-ip>:22".
+			"deny":   ["minecraft:22", "minecraft:53", "minecraft:80", "minecraft:443", "minecraft:3000"],
+		},
+		// Voice uses the game port over UDP.
+		{"src": "<tag>", "proto": "udp", "accept": ["minecraft:<port>"]},
+		// Optional: prove you can still reach your own server, e.g.
+		// {"src": "<your-login@example.com>", "accept": ["minecraft:22"]},
+	],
+}

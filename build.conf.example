@@ -1,0 +1,5 @@
+# Read only by `scripts/build.sh --probe --deploy <file>`; a normal build needs no build.conf.
+# The player tag and the specs log prefix are in the deployment file (deployment.properties.example).
+# Isolation self-test builds: comma-separated IPv4:port targets the helper tries once; list
+# ports your player tag must NOT reach plus one it must.
+#CATTAIL_PROBE_TARGETS=100.101.102.103:22,100.101.102.103:25565
