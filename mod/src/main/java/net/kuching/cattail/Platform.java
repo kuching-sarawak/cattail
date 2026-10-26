@@ -2,21 +2,24 @@ package net.kuching.cattail;
 
 import java.nio.file.Path;
 
+import net.kuching.cattail.helper.HelperTarget;
 import net.neoforged.fml.loading.FMLPaths;
 
-/** Host platform queries used to decide whether the bundled helper can run. */
+/**
+ * Host platform queries: whether the JVM's OS and processor have a helper target (decided by
+ * {@link HelperTarget}, never here) and where the game directory is.
+ */
 public final class Platform {
 
     private Platform() {
     }
 
-    /** True when this JVM runs on 64-bit x86 Windows, the only platform the helper ships for. */
-    public static boolean isWindowsAmd64() {
-        return isWindowsAmd64(System.getProperty("os.name"), System.getProperty("os.arch"));
-    }
-
-    static boolean isWindowsAmd64(String osName, String osArch) {
-        return osName != null && osName.startsWith("Windows") && "amd64".equals(osArch);
+    /**
+     * True when this JVM's OS and processor are one of the {@link HelperTarget}s, that is when
+     * {@link HelperTarget#current()} is present.
+     */
+    public static boolean helperSupported() {
+        return HelperTarget.current().isPresent();
     }
 
     /** The Minecraft game (instance) directory. */

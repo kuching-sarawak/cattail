@@ -10,8 +10,10 @@ import net.kuching.cattail.deploy.DeploymentSettings;
 import net.kuching.cattail.dns.Route;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -171,7 +173,8 @@ class HelperManagerTest {
     }
 
     private HelperManager.HelperBundle bundle() throws Exception {
-        return new HelperManager.HelperBundle(() -> new ByteArrayInputStream(EXE), HelperInstallerTest.sha256(EXE));
+        return new HelperManager.HelperBundle(() -> new ByteArrayInputStream(EXE), HelperInstallerTest.sha256(EXE),
+                "cattail-helper");
     }
 
     /** Deployment settings with tag {@code tag:example}, the default specs prefix and no expiry date. */
@@ -331,7 +334,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void isReadyForAnswersOnlyForTheServedRouteOnceReady() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route r = route("100.101.102.103", 25565, 0);
@@ -345,7 +348,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void ensureStartingTwiceStartsOneProcessWithInstalledExeArgsAndEnv() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "300"));
@@ -364,7 +367,7 @@ class HelperManagerTest {
         assertEquals(1, factory.calls.size());
 
         Call c = factory.calls.get(0);
-        Path exe = gameDir.resolve("cattail/bin/" + HelperManager.helperVersion() + "/cattail-helper.exe");
+        Path exe = gameDir.resolve("cattail/bin/" + HelperManager.helperVersion() + "/cattail-helper");
         assertEquals(exe, c.exe());
         assertArrayEquals(EXE, Files.readAllBytes(exe));
         assertEquals(List.of("--target", "100.101.102.103:25565", "--voice", "24454", "--hostname", "mc-alice",
@@ -376,7 +379,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void concurrentEnsureStartingStartsOneProcess() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "200"));
@@ -405,7 +408,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void forceRelayConfigSetsEnv() throws Exception {
         forceRelay.set(true);
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
@@ -416,7 +419,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void deadHelperIsRestartedOnceThenFailsAsCrashed() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route r = route("100.101.102.103", 25565, 0);
@@ -445,7 +448,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void routeChangeDuringStartKillsTheStartingHelperFirst() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "10000"));
@@ -473,7 +476,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void shutdownThenRestartDuringStartKeepsOneHelper() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "10000"));
@@ -507,7 +510,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void readyTimeoutIsRetriedAsAFreshRun() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofMillis(800));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "10000"));
@@ -540,7 +543,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void helperThatDiesOnItsOwnCountsAsADeath() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_MODE", "die"));
@@ -553,7 +556,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void differentRouteStopsTheHelperAndStartsAFreshRun() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route a = route("100.101.102.103", 25565, 0);
@@ -578,7 +581,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void voiceOnlyChangeStartsAFreshRun() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
 
@@ -595,7 +598,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void readyTimeoutFailsWithReason() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofMillis(500));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "10000"));
@@ -610,7 +613,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void helperErrorIsSurfaced() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_MODE", "err"));
@@ -621,7 +624,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void authFailureAfterExpiryIsKeyExpired() throws Exception {
         deployment = new Deployment.Configured(expiringAuthKey());
         today = LocalDate.of(2026, 10, 21);
@@ -634,7 +637,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void authFailureBeforeExpiryKeepsHelperError() throws Exception {
         deployment = new Deployment.Configured(expiringAuthKey());
         today = LocalDate.of(2026, 10, 19);
@@ -647,7 +650,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void shutdownStopsTheHelper() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         assertTrue(manager.loopbackFor(route("100.101.102.103", 25565, 0)).isPresent());
@@ -662,7 +665,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void shutdownDuringStartStopsTheLateProcess() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "300"));
@@ -677,7 +680,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void noProbeTargetsMeansNoProbeRun() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
 
@@ -701,7 +704,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void probeRunsOnceBeforeTheFirstStartWithTheSameEnvAndHostname() throws Exception {
         forceRelay.set(true);
         deployment = new Deployment.Configured(settings(KEY, Optional.of(TARGETS)));
@@ -713,7 +716,7 @@ class HelperManagerTest {
         assertEquals(List.of("probe", "start"), events);
 
         ProbeCall p = probeCalls.get(0);
-        Path exe = gameDir.resolve("cattail/bin/" + HelperManager.helperVersion() + "/cattail-helper.exe");
+        Path exe = gameDir.resolve("cattail/bin/" + HelperManager.helperVersion() + "/cattail-helper");
         assertEquals(exe, p.exe());
         assertEquals(TARGETS, p.targets());
         assertEquals(List.of("--hostname", "mc-alice", "--log-dir", gameDir.toString(), "--tag", "tag:example"), p.baseArgs());
@@ -731,7 +734,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void failingProbeDoesNotStopTheNormalStart() throws Exception {
         probeMode = "err";
         deployment = new Deployment.Configured(settings(KEY, Optional.of(TARGETS)));
@@ -743,7 +746,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void hangingProbeDoesNotEatTheStartBudget() throws Exception {
         probeMode = "probe-hang";
         probeTimeoutOverride = Duration.ofMillis(1_200);
@@ -757,7 +760,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void shutdownDuringTheProbeKillsIt() throws Exception {
         probeMode = "probe-hang";
         deployment = new Deployment.Configured(settings(KEY, Optional.of(TARGETS)));
@@ -775,7 +778,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void pingForAnotherRouteWhileServingDoesNotSwitch() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route a = route("100.101.102.103", 25565, 0);
@@ -793,7 +796,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void pingForAnotherRouteWhileStartingDoesNotSwitch() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "300"));
@@ -807,7 +810,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void pingForTheSameRouteAttachesToTheRunningHelper() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route a = route("100.101.102.103", 25565, 0);
@@ -822,7 +825,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void pingWhenIdleStartsTheHelper() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route a = route("100.101.102.103", 25565, 0);
@@ -833,7 +836,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void pingAfterARetryableFailureOfAnotherRouteStartsTheHelper() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofMillis(500));
         factory.fakeEnv.put(0, Map.of("FAKE_DELAY_MS", "10000"));
@@ -849,7 +852,7 @@ class HelperManagerTest {
     }
 
     @Test
-    @EnabledOnOs(OS.LINUX)
+    @EnabledOnOs({OS.LINUX, OS.MAC})
     void joinForAnotherRouteWhileServingSwitches() throws Exception {
         manager = newManager(Optional.of(bundle()), Duration.ofSeconds(20));
         Route a = route("100.101.102.103", 25565, 0);
@@ -859,6 +862,59 @@ class HelperManagerTest {
         assertTrue(manager.loopbackFor(b).isPresent());
         assertEquals(2, factory.calls.size());
         assertFalse(factory.started.get(0).isAlive());
+    }
+
+    /**
+     * Resource {@code name} as the mod jar would hold it, looked up under {@code /bundle-fixture/}
+     * of the test resources only: the test classpath also holds the real helpers that
+     * scripts/build.sh writes to the main resources, which a plain lookup would find.
+     */
+    private static URL fixtureResource(String name) {
+        return HelperManagerTest.class.getResource("/bundle-fixture" + name);
+    }
+
+    @Test
+    void loadBundleReadsTheTargetDirectory() throws Exception {
+        // Fixture: helper/linux-amd64/cattail-helper (bytes "fixture") and cattail-helper.sha256 with its hash.
+        byte[] fixture = "fixture".getBytes(StandardCharsets.US_ASCII);
+        HelperManager.HelperBundle b =
+                HelperManager.loadBundle(HelperTarget.LINUX_AMD64, HelperManagerTest::fixtureResource).orElseThrow();
+        assertEquals("cattail-helper", b.binaryName());
+        assertEquals(HelperInstallerTest.sha256(fixture), b.sha256());
+        try (InputStream first = b.exe().open(); InputStream second = b.exe().open()) {
+            assertArrayEquals(fixture, first.readAllBytes());
+            assertArrayEquals(fixture, second.readAllBytes(), "every open is a fresh stream of the binary");
+        }
+    }
+
+    @Test
+    void loadBundleIsEmptyForATargetWithNoResources() {
+        assertEquals(Optional.empty(),
+                HelperManager.loadBundle(HelperTarget.DARWIN_ARM64, HelperManagerTest::fixtureResource));
+    }
+
+    @Test
+    void loadBundleWithoutALookupReadsTheModsOwnResources() {
+        // The main resources hold the real helpers only once scripts/build.sh has run (as in its
+        // test run); either way the production form must agree with HelperManager's own lookup.
+        for (HelperTarget t : HelperTarget.values()) {
+            String dir = "/helper/" + t.resourceDir() + "/";
+            boolean bundled = HelperManager.class.getResource(dir + t.binaryName()) != null
+                    && HelperManager.class.getResource(dir + "cattail-helper.sha256") != null;
+            Optional<HelperManager.HelperBundle> b = HelperManager.loadBundle(t);
+            assertEquals(bundled, b.isPresent(), t.name());
+            b.ifPresent(bundle -> assertEquals(t.binaryName(), bundle.binaryName(), t.name()));
+        }
+    }
+
+    @Test
+    void loadBundleIsEmptyWithoutAValidHash() {
+        String shaRes = "/helper/linux-amd64/cattail-helper.sha256";
+        assertEquals(Optional.empty(), HelperManager.loadBundle(HelperTarget.LINUX_AMD64,
+                name -> name.equals(shaRes) ? null : fixtureResource(name)), "no hash file");
+        assertEquals(Optional.empty(), HelperManager.loadBundle(HelperTarget.LINUX_AMD64,
+                name -> fixtureResource(name.equals(shaRes) ? "/helper/linux-amd64/cattail-helper" : name)),
+                "a hash file whose first line is no sha256 (the binary's bytes here)");
     }
 
     @Test

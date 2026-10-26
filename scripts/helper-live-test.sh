@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Live test of the helper binary from this machine: builds the Linux helper,
+# Live test of the helper binary from this machine: builds the helper for this machine,
 # joins the tailnet as an ephemeral node with the tag from the deployment file,
 # pings the Minecraft server at CATTAIL_TEST_TARGET (ip:port, granted to that
 # tag by the tailnet policy) through the loopback port, sends QUIT and expects

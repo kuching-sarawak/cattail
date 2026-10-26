@@ -29,6 +29,10 @@ public final class CattailConfig {
     public static final ModConfigSpec.BooleanValue FORCE_RELAY;
     public static final ModConfigSpec.ConfigValue<String> HELPER_LOG_LEVEL;
     public static final ModConfigSpec.BooleanValue SHARE_SPECS;
+    /** Moves the server-list icon right (positive) or left, in GUI pixels. */
+    public static final ModConfigSpec.IntValue SERVER_LIST_ICON_OFFSET_X;
+    /** Moves the server-list icon down (positive) or up, in GUI pixels. */
+    public static final ModConfigSpec.IntValue SERVER_LIST_ICON_OFFSET_Y;
 
     static {
         ModConfigSpec.Builder b = new ModConfigSpec.Builder();
@@ -46,6 +50,11 @@ public final class CattailConfig {
                         "mod count, Cattail version; no IP, host name or serial numbers) once per login to servers",
                         "that ask for them (cattail:sysinfo). The server logs them once per login.")
                 .define("shareSpecs", true);
+        SERVER_LIST_ICON_OFFSET_X = b.comment("Moves the Cattail icon on the server list sideways, in pixels (right is positive),",
+                        "for example out of the way of another mod's icon on the same row.")
+                .defineInRange("serverListIconOffsetX", 0, -200, 200);
+        SERVER_LIST_ICON_OFFSET_Y = b.comment("Moves the Cattail icon on the server list, in pixels (down is positive).")
+                .defineInRange("serverListIconOffsetY", 0, -200, 200);
         SPEC = b.build();
     }
 

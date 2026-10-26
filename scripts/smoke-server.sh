@@ -6,7 +6,7 @@
 # no problems"), no Cattail voice WARN line was logged, and there were no mod-loading errors. Stops
 # the server afterwards.
 #
-#   scripts/smoke-server.sh [--novoice] [extra gradle args...]     e.g. -PskipHelper
+#   scripts/smoke-server.sh [--novoice] [extra gradle args...]     e.g. -PskipHelper, in any order
 #
 # --novoice runs the server without Plasmo Voice on the classpath (-PnoVoice), as a server
 # running the no-voice jar does, and then passes when the log shows "Cattail voice: Plasmo Voice
@@ -20,10 +20,17 @@ set -Eeuo pipefail
 cd "$(dirname "$0")/.."
 source scripts/env.sh
 
+# --novoice may come anywhere among the arguments; it is never passed on to Gradle.
 NOVOICE=0
-if [[ "${1:-}" == --novoice ]]; then
-    NOVOICE=1
+for arg in "$@"; do
     shift
+    if [[ "$arg" == --novoice ]]; then
+        NOVOICE=1
+    else
+        set -- "$@" "$arg"
+    fi
+done
+if (( NOVOICE )); then
     set -- -PnoVoice "$@"
 fi
 TIMEOUT_S="${SMOKE_TIMEOUT_S:-600}"

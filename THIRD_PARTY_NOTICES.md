@@ -3,12 +3,13 @@
 Cattail is licensed under the MIT License (see `META-INF/licenses/LICENSE` in the jar or `LICENSE`
 in the repository). This file covers the Plasmo Voice mod nested in the Cattail jar, which is
 distributed under its own license as listed below, and points to the licences of the Go modules
-linked into the helper.
+linked into the helpers.
 
-## Cattail helper (Go modules)
+## Cattail helpers (Go modules)
 
-`cattail-helper.exe`, nested in the jar, is a statically linked Go binary built from
-`tailscale.com` and the modules it depends on (BSD, MIT and Apache-2.0 licences; no
+The helpers nested in the jar (`cattail-helper.exe` for Windows, `cattail-helper` for Linux and
+macOS) are Go binaries that statically link the Go runtime and their Go modules, built from
+`tailscale.com` and the modules it depends on (BSD, MIT, ISC and Apache-2.0 licences; no
 copyleft). Their full licence texts and the Go runtime licence are in
 `META-INF/licenses/THIRD_PARTY_LICENSES.md` in the jar (`helper/THIRD_PARTY_LICENSES.md` in the
 repository), generated from `helper/go.mod` by `scripts/gen-helper-notices.sh`.

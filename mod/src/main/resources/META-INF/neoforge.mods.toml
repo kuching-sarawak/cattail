@@ -13,7 +13,7 @@ authors="kuching-sarawak"
 description="Connects to the owner's Minecraft server over Tailscale; no account needed."
 displayURL="https://github.com/kuching-sarawak/cattail"
 # NeoForge's update checker (the marker on the Mods screen); update.json in the public repository
-# is bumped with every release (UpdateJsonTest pins it to mod_version).
+# is bumped with every release by scripts/bump-version.sh (UpdateJsonTest pins it to mod_version).
 updateJSONURL="https://raw.githubusercontent.com/kuching-sarawak/cattail/main/update.json"
 
 [[mixins]]

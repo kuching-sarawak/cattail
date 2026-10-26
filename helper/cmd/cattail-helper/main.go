@@ -188,8 +188,9 @@ func run(ctx context.Context, args []string, stdin io.Reader, rawStdout io.Write
 	log.Printf("cattail-helper %s starting: hostname=%s tag=%s target=%v voice=%d probes=%d",
 		version, cfg.hostname, cfg.tag, cfg.target, cfg.voice, len(cfg.probes))
 
-	// Built with -H windowsgui the helper has no console, and the game discards
-	// what it does not read: a panic or runtime fatal error also goes to a file.
+	// On Windows the helper is built without a console, and on every OS the
+	// game discards what it does not read from stderr: a panic or runtime fatal
+	// error therefore also goes to a file.
 	if f, err := openCrashLog(cfg.logDir); err != nil {
 		log.Printf("crash log unavailable: %v", err)
 	} else {

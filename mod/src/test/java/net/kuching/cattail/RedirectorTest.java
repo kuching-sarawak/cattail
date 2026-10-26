@@ -3,15 +3,20 @@ package net.kuching.cattail;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import net.kuching.cattail.dns.Route;
 import net.kuching.cattail.dns.RouteDecider;
 import net.kuching.cattail.helper.HelperStatus;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,6 +24,8 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.junit.jupiter.api.Test;
 
 class RedirectorTest {
@@ -219,7 +226,7 @@ class RedirectorTest {
     }
 
     @Test
-    void rewriteOnNonWindowsReturnsOriginal() {
+    void rewriteOnUnsupportedPlatformReturnsOriginal() {
         FakeGateway gw = new FakeGateway(Optional.of(
                 new InetSocketAddress(InetAddress.getLoopbackAddress(), 51234)), null);
         Redirector r = new Redirector(ours(), gw, () -> false, () -> true);
@@ -229,8 +236,20 @@ class RedirectorTest {
         assertTrue(gw.started.isEmpty());
         assertTrue(gw.asked.isEmpty());
         Redirector.Status s = r.lastStatus().orElseThrow();
-        assertEquals("windows-only", s.key());
+        assertEquals("unsupported-platform", s.key());
         assertTrue(s.visible());
+    }
+
+    @Test
+    void unsupportedPlatformIsShownEvenUnroutedWithItsLangText() throws IOException {
+        assertTrue(new Redirector.Status("unsupported-platform", "", false).visible(), "in VISIBLE_UNROUTED");
+        try (InputStream in = Redirector.class.getResourceAsStream("/assets/cattail/lang/en_us.json")) {
+            assertNotNull(in, "en_us.json");
+            JsonObject lang =
+                    JsonParser.parseReader(new InputStreamReader(in, StandardCharsets.UTF_8)).getAsJsonObject();
+            assertEquals("Cattail supports Windows x64, Linux x64 and macOS on Apple silicon only",
+                    lang.get("cattail.status.unsupported-platform").getAsString());
+        }
     }
 
     @Test

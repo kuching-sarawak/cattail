@@ -5,8 +5,9 @@
   "cattail.status.not-configured": "This Cattail jar has not been set up by a server owner",
   "cattail.status.deployment-invalid": "Cattail deployment file is invalid (%s)",
   "cattail.status.key-expired": "Server key expired, ask the server owner",
-  "cattail.status.windows-only": "Cattail supports Windows only",
+  "cattail.status.unsupported-platform": "Cattail supports Windows x64, Linux x64 and macOS on Apple silicon only",
   "cattail.status.not-ours": "Not a Cattail server",
-  "cattail.label": "Tailscale Tunnel",
+  "cattail.icon.header": "Cattail %s",
+  "cattail.icon.header.unknown": "Cattail",
   "cattail.label.tooltip": "Via Tailscale · %s"
 }

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"tailscale.com/client/local"
 	"tailscale.com/ipn/store/mem"
 )
 
@@ -119,5 +120,15 @@ func TestFirstIPv4(t *testing.T) {
 	}
 	if _, ok := FirstIPv4([]netip.Addr{v6}); ok {
 		t.Error("FirstIPv4 found an IPv4 in an IPv6-only list")
+	}
+}
+
+// The helper's local client must never look for the Tailscale desktop app's token: on macOS
+// that lookup forks `lsof` on every request and the fork can hang the dial (see inProcessOnly).
+func TestInProcessOnlyOmitsPlatformAuth(t *testing.T) {
+	lc := &local.Client{}
+	inProcessOnly(lc)
+	if !lc.OmitAuth {
+		t.Fatal("inProcessOnly must set OmitAuth so no request forks a subprocess on macOS")
 	}
 }

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Stand-in for cattail-helper.exe in unit tests (Linux only). Speaks the same
+# Stand-in for the helper binary in unit tests (Linux and macOS). Speaks the same
 # stdout protocol: READY first, then WARN/ERR lines; exits on QUIT or EOF.
 #   FAKE_DELAY_MS  sleep this many milliseconds before anything else
 #   FAKE_MODE=err  print "ERR auth bad key" and exit 3

@@ -14,18 +14,22 @@ records, and one command that writes the key into the Cattail jar. Then you send
 players.
 
 **For your players.** A player puts one jar in the `mods` folder and adds your server by its
-name, as with any server. The server list shows a `Tailscale Tunnel` label next to your server.
+name, as with any server. The server list shows a small Cattail icon next to your server;
+hovering it shows whether the link is up and a few lines you write, such as your restart time.
 Proximity voice chat (Plasmo Voice) is built into the standard jar; a no-voice jar without it is
 on every release too. Players need no Tailscale account, no Tailscale
 app and no admin rights. The one exception is an optional Windows Firewall prompt, which asks for
-an administrator. Players need a Windows x64 PC (see [Supported today](#supported-today)).
+an administrator; macOS needs none, and on Linux none is expected (untested).
+Players need a PC with Windows x64, Linux x64 or macOS on Apple silicon (see
+[Supported today](#supported-today)).
 
 **On the server, the jar is optional.** If your server is already on your tailnet, players join
 without any change on the server: the tunnel is on the player's side, and the server sees an
 ordinary connection from a tailnet address. Put the jar in the server's `mods` folder only if you
-want what it adds there: the server half of proximity voice, and the start-up checks and log
-lines (version, key expiry, voice config, player specs). If you do not care about voice or the
-logs, the jar only needs to be distributed to your players.
+want what it adds there: the server half of proximity voice, your lines in the server list's
+Cattail tooltip, and the start-up checks and log lines (version, key expiry, voice config, player
+specs). If you do not care about voice, the lines or the logs, the jar only needs to be
+distributed to your players.
 
 Cattail is not affiliated with Tailscale Inc., Mojang or Microsoft.
 
@@ -34,14 +38,15 @@ Cattail is not affiliated with Tailscale Inc., Mojang or Microsoft.
 | Side | Supported | Notes |
 |---|---|---|
 | Client | NeoForge 21.1.x on Minecraft 1.21.1, Java 21 | The mod manifest pins `[1.21.1]` |
-| Client OS | Windows x64 | Other OSes: the mod loads, shows `Cattail supports Windows only`, and the game connects directly, which needs that player's own Tailscale |
-| Server | NeoForge 1.21.1 dedicated server with the Cattail jar | Full: joins, voice, start-up checks, specs log |
+| Client OS | <ul><li>Windows x64</li><li>Linux x64 (untested: builds and tests pass, no live join yet)</li><li>macOS on Apple silicon</li></ul> | Other combinations (Windows on ARM with an arm64 Java, Intel Macs, Linux on ARM, an x86-64 Java under Rosetta): the mod loads, shows `Cattail supports Windows x64, Linux x64 and macOS on Apple silicon only`, and the game connects directly, which needs that player's own Tailscale. An x64 Java on Windows on ARM counts as Windows x64 and runs the x64 helper under emulation (untested) |
+| Server | NeoForge 1.21.1 dedicated server with the Cattail jar | Full: joins, voice, server-list lines, start-up checks, specs log |
 | Server (other) | Any 1.21.1 server with Tailscale on the host | Joins should work since the server only sees TCP from a Tailscale address. Untested. No voice without a Plasmo Voice 2.1.x server |
 | Voice | Plasmo Voice 2.1.17, bundled in the standard jar | Standalone Plasmo in `[2.1.17, 2.2)` is accepted; outside that range NeoForge refuses to start. The `-novoice` jar bundles nothing and has no voice |
 | `inject` | Java 21 or later, any OS | A JRE is enough |
 
-More Minecraft versions and more client platforms are planned as a separate effort. There are no
-dates.
+More Minecraft versions are planned as a separate effort. There are no dates. Windows on ARM,
+Intel Macs and Linux on ARM are left out for now: each bundled helper adds about 8 to 9 MB to
+every jar.
 
 ## Contents
 
@@ -119,7 +124,7 @@ Optional. The jar from the Releases page is all you need to set up a server.
 - The pinned toolchain (Go, a Temurin JDK and staticcheck), installed per user by
   `scripts/install-toolchain.sh`. It needs no root.
 - On Linux, Xvfb for the headless client smoke test (Debian and Ubuntu packages `xvfb` and
-  `libgl1-mesa-dri`). macOS skips that test.
+  `libgl1-mesa-dri`). macOS runs that test on the desktop, where a game window opens.
 - Network access and some time. The first run downloads the toolchain, Gradle, NeoForge and
   Plasmo Voice: allow about ten minutes. Later builds reuse the downloads.
 
@@ -428,8 +433,8 @@ private too. Then check the server log.
 
 **This step is optional** ([What Cattail does](#what-cattail-does)). Without the jar on the
 server, players still join, the mod's one network channel being optional, but there is no voice
-unless the server already runs a standalone Plasmo Voice in the supported range, and none of the
-log lines below. That is the `Server (other)` row of [Supported today](#supported-today): joins
+unless the server already runs a standalone Plasmo Voice in the supported range, no lines of
+yours in the server-list tooltip, and none of the log lines below. That is the `Server (other)` row of [Supported today](#supported-today): joins
 only, and untested.
 
 **Who can log in.** Anyone who holds the jar can reach the game port. Before you restart, keep
@@ -462,6 +467,11 @@ These lines need your attention:
 | `Cattail: the server key expires in <n> day(s); inject a new deployment.properties` | `authkey.expires` is seven days away or less. |
 | `Cattail: the server key expired on <date>; players cannot join until a new jar is injected` | `authkey.expires` has passed. |
 
+**Server-list lines.** On its first start the server also writes `config/cattail-server.toml`.
+Its lines appear in the tooltip of the Cattail icon in your players' server lists. The default
+lines are examples: replace them with your own, or remove them
+([Server config](#server-config)).
+
 **Voice.** On the first tick after start, Cattail checks the bundled Plasmo Voice config
 (`config/plasmovoice/server/config.toml`) and logs lines that start with `Cattail voice:`. The
 good case is:
@@ -492,27 +502,43 @@ with the page. The jar works as a key to your server, so never post it anywhere 
   note for server owners at the top.
 - A private link is one that only your players get: a direct message, or a file share limited to
   the people you invite. Not a public channel, a mod site or a public modpack.
-- Players need a Windows x64 PC and a NeoForge instance on the versions in
-  [Supported today](#supported-today).
+- Players need a PC with Windows x64, Linux x64 or macOS on Apple silicon, and a NeoForge
+  instance on the versions in [Supported today](#supported-today).
 - Keep every player and the server on the same Cattail version. Voice works only when the Plasmo
   Voice in the player's jar matches the server's.
-- The first time a player opens Multiplayer with your server in the list, or joins it, Windows
-  Firewall asks about `cattail-helper.exe`. Allowing it needs an administrator. A player who
-  clicks **Cancel** still connects, over a slower relayed path.
+- The first time a player opens Multiplayer with your server in the list, or joins it, the helper
+  starts and the PC's firewall may ask about it:
+  - Windows: Windows Firewall asks about `cattail-helper.exe`. Allowing it needs an
+    administrator. A player who clicks **Cancel** still connects, over a slower relayed path.
+  - macOS: if the macOS firewall is on, macOS is expected to ask
+    `Do you want the application cattail-helper to accept incoming network connections?`
+    (not yet checked on a player's Mac; if the wording differs, it is answered the same way).
+    **Allow** should keep direct connections possible, and a player who clicks **Deny** should
+    still connect, over a slower relayed path. No administrator should be needed.
+  - Linux: most desktop Linux installs ask nothing. A strict firewall that blocks UDP out can
+    force the relayed path.
 
 </details>
 
 ### 8. Check from a player's PC
 
-On a Windows PC (yours or a player's) with the injected jar in `mods`, start the game, open Multiplayer and add your
-server by its name. The server's row shows `Tailscale Tunnel` next to the ping bars. When you
-join, the connect screen shows `Starting Tailscale link…`, then
+On a PC of a supported platform (yours or a player's) with the injected jar in `mods`, start the game, open Multiplayer and add your
+server by its name. The server's row shows the Cattail icon, a small yellow cat, left of the
+player count. When you join, the connect screen shows `Starting Tailscale link…`, then
 `Connected via Tailscale (100.101.102.103)`. Talk to another player in the world to check voice.
 
 <details><summary>Details</summary>
 
-- `Tailscale Tunnel` is green while the link is up and grey while it starts or is idle. Hovering
-  over it shows `Via Tailscale · 100.101.102.103`.
+- The icon is bright for a server that runs Cattail or that the game routes, and dim while the
+  game routes the server but its helper is not ready. Bright alone does not mean the link is up:
+  the tooltip's link line says that. Hovering over the icon shows a tooltip: `Cattail <version>`
+  in bold with the server's Cattail version, then `Via Tailscale · 100.101.102.103`, green while
+  the link is up and grey otherwise, then each of your lines from `config/cattail-server.toml`
+  after a `•` ([Server config](#server-config)). Without the Cattail jar on the server, the
+  tooltip is `Cattail` and the link line only.
+- Another mod's icon on the same row (No Chat Reports, for example) can sit over this one;
+  the client config's `serverListIconOffsetX` and `serverListIconOffsetY` move Cattail's icon
+  out of its way.
 - In the admin console, the Machines page lists a node `mc-<player name>` with `tag:mc-player`
   while the game runs. On the server, `tailscale status` lists it as a peer. When the game quits
   normally, the helper logs the node out and Tailscale removes it at once. After a crash or a lost
@@ -647,8 +673,8 @@ player nodes also go away by themselves once their game quits.
 
 ## Configuration reference
 
-Four things can be configured: the deployment file you inject, the TXT record, each player's
-client config, and the `inject` command itself.
+Five things can be configured: the deployment file you inject, the TXT record, the server
+config, each player's client config, and the `inject` command itself.
 
 ### deployment.properties
 
@@ -686,6 +712,51 @@ from `target=`, is in `100.64.0.0/10`, and its TXT record carries `cattail=1`. W
 gives an address outside that range, the mod does not read the TXT record at all. IP addresses and
 `localhost` are never routed.
 
+### Server config
+
+A dedicated server with the Cattail jar writes `config/cattail-server.toml` in the server folder
+on its first start, with these defaults. It sets what your players' server lists show about your
+server. A player's game never creates this file. You can also write the file yourself before the
+first start, with just the keys: the server then logs that the file "is not correct" and rewrites
+it with the comment lines added, keeping your values (and a `.bak` copy of yours).
+
+```toml
+[serverList]
+	#Show the Cattail icon with these lines on players' server lists.
+	showIcon = true
+	#One tooltip line each, in order. & plus a Minecraft formatting code styles the rest of
+	#the line (&a green, &7 grey, &l bold, &r reset). At most 6 lines of 64 characters.
+	lines = ["Voice chat on", "Restarts daily 2:00 AM ET"]
+```
+
+| Key | Default | Meaning |
+|---|---|---|
+| `showIcon` | `true` | Send your Cattail version and lines with the server-list ping. With `false` the server sends neither, and players see the icon only for a server their game routes, with `Cattail` and the link line in its tooltip. |
+| `lines` | `["Voice chat on", "Restarts daily 2:00 AM ET"]` | The tooltip lines, in order, below the `Cattail <version>` header and the link line. The defaults are examples: replace them with your own, or set `lines = []` for none. |
+
+The rules for `lines`:
+
+- At most 6 lines, each at most 64 characters, formatting codes included. A longer line is cut
+  to 64 characters. Control characters and invisible Unicode format characters (such as the
+  right-to-left override) become spaces, and spaces at either end are removed.
+- The server leaves out an empty line, a line with nothing but formatting codes, and every line
+  past the first six it keeps. It logs a WARN for each line it leaves out or cuts when it starts
+  and again after each edit that changes the lines ([Read the server log](#read-the-server-log));
+  the other lines still show.
+- `&` followed by a formatting code (`0` to `9`, `a` to `f`, `k` to `o`, or `r`, in either case)
+  styles the rest of the line, as in Minecraft: `&a` green, `&7` grey, `&l` bold, `&r` back to
+  the tooltip's own grey. A colour code also ends the bold, italic and other styles before it.
+  Any other `&` shows as it is. An `&` directly before one of those letters or digits is always
+  a code, so write `Q & A`, not `Q&A`. A `§` not followed by a formatting code is removed, since
+  the game would not draw it.
+- The tooltip shows each line after a `•`, in grey unless a code says otherwise. Its first line,
+  `Cattail <version>` with the server's Cattail version, is plain text that you cannot style.
+
+Edits apply without a restart. The server reloads the file when it changes and rebuilds its
+server-list answer every 5 seconds, so a player's server list shows the new lines on its next
+refresh, a few seconds after you save. Anyone who can ping the server can read the lines, with
+or without Cattail, so put nothing private in them. A game without Cattail ignores them.
+
 ### Client config
 
 Each player's game reads `config/cattail-client.toml` in its instance folder. The game writes the
@@ -698,6 +769,8 @@ file with these defaults on its first start. After an edit, the player restarts 
 | `forceRelay` | `false` | Force the helper to use Tailscale's DERP relays instead of a direct connection. |
 | `helperLogLevel` | `info` | Helper log level: `debug`, `info` or `warn`. This version does not pass it to the helper, so it has no effect yet. |
 | `shareSpecs` | `true` | Send your PC specs (CPU, RAM, GPU, driver, OS, Java, heap, render distance, shaderpack, mod count, Cattail version; no IP, host name or serial numbers) once per login to servers that ask for them (`cattail:sysinfo`). The server logs them once per login. |
+| `serverListIconOffsetX` | `0` | Moves the Cattail icon in the server list sideways, in pixels from `-200` to `200`: right is positive, left negative. By default the icon's right edge sits 4 pixels left of the player count (or of the ping bars when the row shows no count), where vanilla draws nothing. If another mod's icon sits over it, move Cattail's icon out of the way with this and `serverListIconOffsetY`. |
+| `serverListIconOffsetY` | `0` | Moves the Cattail icon up or down, in pixels from `-200` to `200`: down is positive, up negative. |
 
 A player whose DNS hides your records gets a line like this from you, in place of the
 `forcedHosts` line in that file:
@@ -853,6 +926,11 @@ only when a player's Plasmo Voice matches the server's, so move everyone to the 
 screen also marks Cattail when a newer release exists on GitHub (NeoForge's update checker reads
 [update.json](update.json) from this repository).
 
+The server-list icon and its lines ([Server config](#server-config)) need a release with the
+icon on both sides. A player on an older release ignores your lines. A player on a release with
+the icon, against a server that runs an older one, sees the icon only for a server the game
+routes, with `Cattail` and the link line in the tooltip but none of your lines.
+
 ### Add or remove a player
 
 Players are not users of your tailnet, and there is no per-player key: all players share one jar.
@@ -889,21 +967,26 @@ Select-String -Path logs\latest.log -Pattern 'Cattail'
 | `Cattail: deployment file rejected (<key>)` | ERROR | Follows the line above. Inject again and install the new jar. |
 | `Cattail: the server key expires in <n> day(s); inject a new deployment.properties` | WARN | `authkey.expires` is seven days away or less, `0` on its last day. [Rotate the key](#rotate-the-key). |
 | `Cattail: the server key expired on <date>; players cannot join until a new jar is injected` | ERROR | `authkey.expires` has passed. [Rotate the key](#rotate-the-key). |
-| The `CATTAILSPECS` line, format below | INFO | One player's PC specs, once per login. |
+| The `CATTAILSPECS` line, format below | INFO | One player's PC specs, once per login; a Cattail client that is ready sends them while the server is still configuring the connection, before the join, else right after it. |
+| `Cattail: cattail-server.toml serverList.lines: line <n> <reason>` | WARN | Line `<n>` of `lines` in `config/cattail-server.toml` is not shown, or shown cut. `<reason>` is `is empty, left out`, `has only formatting codes, left out`, `is past the limit of 6 lines, left out` or `is longer than 64 characters, cut`. Logged at start and after each edit that changes the lines ([Server config](#server-config)). |
+| `Cattail: no server-list info for the status; players see no Cattail lines until this is fixed` | WARN | Building the server's server-list information failed, and an error trace follows. Logged once. Players see no version or lines from the server meanwhile. Report it ([Support](#support)). |
 
-The server checks the jar once, at start-up, and logs at most one line that starts with
-`Cattail:`. Without `authkey.expires`, or with a date more than seven days away, there is none. The `Cattail voice:` lines are explained under
+The server checks the jar once, at start-up, and logs at most one line about it that starts
+with `Cattail:`. Without `authkey.expires`, or with a date more than seven days away, there is
+none. The `Cattail voice:` lines are explained under
 [Voice](#voice).
 
 The specs line has this format:
 
 ```text
-<prefix>|<player>|<cpu>|<cores>c/<threads>t|<ram> GiB|<gpu>|<vram> GiB|<driver>|<os>|Java <version>|heap <heap> GiB|render <distance>|<shaderpack or none>|<mods> mods|cattail <version>
+<prefix>|<player>|<cpu>|<cores>c/<threads>t|<ram> GiB|<gpu>|<vram> GiB|<driver>|<os>|Java <version>|heap <heap> GiB|render <distance>|<shaderpack or none>|<mods> mods|cattail <version>|ip <address>
 ```
 
 `<prefix>` is `specs.prefix` from your deployment file, `CATTAILSPECS` by default. The server
-logs the line for every player whose `shareSpecs` is on, which is the default. A `|` inside a
-value becomes `/`, each value is at most 64 characters, and the line is at most 1024 bytes. To list
+logs the line for every player whose `shareSpecs` is on, which is the default. `<address>` is
+the address the player connected from, which the server knows anyway (through Cattail, the
+player's tailnet address); the player's PC sends no address. A `|` inside a value becomes `/`,
+each value is at most 64 characters, and the line is at most 1024 bytes. To list
 only these lines on Linux and macOS (if you set `specs.prefix`, use it in place of
 `CATTAILSPECS`):
 
@@ -982,14 +1065,15 @@ one line per finding:
 
 One entry per symptom, named by the text you or a player sees. Cattail's line on the connect
 screen appears below the usual connecting text, and only for a server the mod routes. A player's
-logs are in the instance folder: `cattail\helper.log`, `cattail\helper-crash.log` (if it exists)
-and `logs\latest.log`. They contain your server's name and address, the player's own public IP
-addresses (in lines such as `magicsock: endpoints changed:`), the player's Windows user name and
-your tailnet's MagicDNS domain name (the tailnet DNS name shown on the DNS page of the admin
-console). The user name is part of the instance folder's path, usually under `C:\Users\<name>`,
-which `logs\latest.log` shows in the `Starting Cattail helper:` line (the helper's command line)
-and `cattail\helper.log` in the `tsnet starting` line. Replace all of these before you post the
-logs anywhere public.
+logs are in the instance folder: `cattail/helper.log`, `cattail/helper-crash.log` (if it exists)
+and `logs/latest.log` (on Windows the same folders show with backslashes). They contain your
+server's name and address, the player's own public IP addresses (in lines such as
+`magicsock: endpoints changed:`), the player's user name and your tailnet's MagicDNS domain name
+(the tailnet DNS name shown on the DNS page of the admin console). The user name is part of the
+instance folder's path, usually under `C:\Users\<name>` on Windows, `/Users/<name>` on macOS or
+`/home/<name>` on Linux, which `logs/latest.log` shows in the `Starting Cattail helper:` line (the
+helper's command line) and `cattail/helper.log` in the `tsnet starting` line. Replace all of these
+before you post the logs anywhere public.
 
 <details><summary><code>Starting Tailscale link…</code></summary>
 
@@ -1021,7 +1105,7 @@ logs anywhere public.
 
 - **Cause:** the helper did not get ready. The game then tries a direct connection, which fails
   unless that PC runs Tailscale itself.
-- **Check:** the reason, then the player's `cattail\helper.log` and `logs\latest.log`.
+- **Check:** the reason, then the player's `cattail/helper.log` and `logs/latest.log`.
 - **Fix:** the one in the table. The next join retries every reason except `helper-crashed`,
   which needs a game restart.
 
@@ -1030,11 +1114,11 @@ logs anywhere public.
 | `ready-timeout` or `helper-error:up-timeout` | The helper did not reach your tailnet within 20 seconds. The PC cannot reach Tailscale (a firewall, proxy or captive portal), the node waits for device approval, or the network is slow. | Join again. See the device approval entry below. Try another network. |
 | `helper-error:auth` | Tailscale refused the key: it was revoked, it expired and `authkey.expires` is not set, or `tag` names a tag the key may not use. | Compare the key and its tag on the Keys or Trust credentials page with `deployment.properties`, then [rotate the key](#rotate-the-key). |
 | `helper-missing` | The jar holds no helper program: it is not a release jar, or it is damaged. | Download the generic jar again, check it against `SHA256SUMS`, inject it and send the new jar. |
-| `install-failed` | The game could not write the helper to `cattail\bin` in the instance folder, or the written copy failed its checksum, which means the helper inside the jar is damaged. | Free disk space, make the instance folder writable, and check whether antivirus removed the file. If it happens again, download the generic jar again, check it against `SHA256SUMS`, inject it and send the new jar. |
-| `launch-failed` | Windows did not start `cattail-helper.exe`, for example because antivirus blocked it. | Allow the file in `cattail\bin` in the antivirus, then join again. |
-| `helper-crashed` | The helper stopped twice in one session. | Restart the game. If it happens again, report it with `cattail\helper-crash.log` ([Support](#support)). |
-| `internal-error` | An error in Cattail's start code. `logs\latest.log` has `Cattail helper start crashed`. | Restart the game. If it happens again, report it ([Support](#support)). |
-| Any other code | The helper stopped or reported an error before it was ready: `helper-exited:<code>`, `helper-error:<code>` or `ready-malformed`. A `forcedHosts` address outside the Tailscale range gives `helper-error:usage`. | `cattail\helper.log` names the cause. |
+| `install-failed` | The game could not write the helper to `cattail/bin` in the instance folder, or the written copy failed its checksum, which means the helper inside the jar is damaged. | Free disk space, make the instance folder writable, and check whether antivirus removed the file. If it happens again, download the generic jar again, check it against `SHA256SUMS`, inject it and send the new jar. |
+| `launch-failed` | The OS did not start the helper, for example because antivirus (Windows) or a `noexec` mount of the instance folder (Linux) blocked it. | Allow the file in `cattail/bin` in the antivirus, or keep the instance folder on a drive mounted without `noexec`, then join again. |
+| `helper-crashed` | The helper stopped twice in one session. | Restart the game. If it happens again, report it with `cattail/helper-crash.log` ([Support](#support)). |
+| `internal-error` | An error in Cattail's start code. `logs/latest.log` has `Cattail helper start crashed`. | Restart the game. If it happens again, report it ([Support](#support)). |
+| Any other code | The helper stopped or reported an error before it was ready: `helper-exited:<code>`, `helper-error:<code>` or `ready-malformed`. A `forcedHosts` address outside the Tailscale range gives `helper-error:usage`. | `cattail/helper.log` names the cause. |
 
 </details>
 
@@ -1054,7 +1138,7 @@ logs anywhere public.
 
 - **Cause:** the deployment file inside the player's jar was rejected. `inject` checks the
   file before it writes, so the jar was changed or damaged afterwards.
-- **Check:** the player's `logs\latest.log` has `Cattail deployment file rejected:` with the
+- **Check:** the player's `logs/latest.log` has `Cattail deployment file rejected:` with the
   setting and the rule.
 - **Fix:** inject the generic jar again and send the new jar.
 
@@ -1069,23 +1153,29 @@ logs anywhere public.
 
 </details>
 
-<details><summary><code>Cattail supports Windows only</code></summary>
+<details><summary><code>Cattail supports Windows x64, Linux x64 and macOS on Apple silicon only</code></summary>
 
-- **Cause:** the player's PC is not 64-bit Windows, for example macOS, Linux or Windows on ARM.
-  The game then connects directly, which works only if that PC runs Tailscale itself and your
-  policy lets it reach the server.
-- **Check:** the PC's operating system and processor.
-- **Fix:** the player joins from a Windows x64 PC.
+- **Cause:** the player's PC is none of these, for example Windows on ARM with an arm64 Java
+  (an x64 Java there counts as Windows x64 and runs the x64 helper under emulation, untested), an
+  Intel Mac or Linux on ARM, or the game runs on an x86-64 Java under Rosetta on an Apple silicon
+  Mac, which the mod takes for an Intel Mac. The game then connects directly, which works only if
+  that PC runs Tailscale itself and your policy lets it reach the server.
+- **Check:** the PC's operating system and processor. On an Apple silicon Mac, also whether the
+  launcher runs the game on an x86-64 Java.
+- **Fix:** the player joins from a supported PC. On an Apple silicon Mac, that means the game runs
+  on an arm64 Java, not an x86-64 one under Rosetta.
 
 </details>
 
-<details><summary>No Cattail line on the connect screen and no <code>Tailscale Tunnel</code> label</summary>
+<details><summary>No Cattail line on the connect screen and no Cattail icon in the server list</summary>
 
 - **Cause:** the mod did not take the name for a Cattail server, so the game connected directly.
   The mod's status for this, `Not a Cattail server`, is never shown on screen.
 - **Check:** on the player's PC, run `nslookup mc.example.com` and
-  `nslookup -type=TXT mc.example.com`. The server list shows the label only after it has pinged
-  the server. Then go through the causes:
+  `nslookup -type=TXT mc.example.com`. The server list shows the icon only after it has pinged
+  the server. With the Cattail jar on your server, the icon shows even when the mod does not
+  route the name, but its tooltip then has no `Via Tailscale` line: the same causes apply. Then
+  go through the causes:
   - The A record is proxied or points outside `100.64.0.0/10`. The mod then never reads the TXT
     record.
   - The A record is missing. The name is then routed only if the TXT record carries `target=`.
@@ -1136,7 +1226,7 @@ Tailscale, [Device approval](https://tailscale.com/kb/1099/device-approval) and
   - The server runs Plasmo Voice. When it does not, the player sees
     `Plasmo Voice is not installed on this server`.
   - No other program on the player's PC holds that UDP port. When one does, the player's
-    `logs\latest.log` has `helper: WARN voice-port-busy`.
+    `logs/latest.log` has `helper: WARN voice-port-busy`.
 - **Fix:** correct what the check found. After a DNS change, players restart the game.
 
 </details>
@@ -1174,8 +1264,9 @@ scripts/build.sh
   needs no root. Running it again is safe.
 - `source scripts/env.sh` puts that toolchain on your `PATH`. Run it in every new shell.
 - `scripts/build.sh` runs `go vet`, `staticcheck` and `go test` on the helper, cross-compiles the
-  helper for Windows, builds the mod with its tests, runs the headless client smoke test (Linux
-  only, under Xvfb), and writes the jar. It refuses to build from uncommitted changes.
+  helper for Windows x64, Linux x64 and macOS on Apple silicon, builds the mod with its tests,
+  runs the client smoke test (under Xvfb on Linux, on the desktop on macOS), and writes the jar.
+  It refuses to build from uncommitted changes.
 
 | Flag | Effect |
 |---|---|
@@ -1212,16 +1303,16 @@ Report bugs and ask questions in the
 - the Cattail version: the jar's file name, or the output of
   `java -jar cattail-<version>.jar --version`;
 - the exact text on the connect screen, or the server log lines that contain `Cattail`;
-- for a player's problem, `cattail\helper.log`, `cattail\helper-crash.log` (if it exists) and
-  `logs\latest.log` from the instance folder.
+- for a player's problem, `cattail/helper.log`, `cattail/helper-crash.log` (if it exists) and
+  `logs/latest.log` from the instance folder.
 
 Issues are public. Never attach an injected jar or `deployment.properties`. In logs, replace your
 server's name and Tailscale addresses with placeholders such as `mc.example.com` and
-`100.101.102.103`. Also replace the player's public IP addresses, which `cattail\helper.log` shows
-in lines such as `magicsock: endpoints changed:`; the player's Windows user name, which
-`logs\latest.log` and `cattail\helper.log` show in the instance folder's path (usually under
-`C:\Users\<name>`); and your tailnet's MagicDNS domain name, the tailnet DNS name shown on the
-DNS page of the admin console.
+`100.101.102.103`. Also replace the player's public IP addresses, which `cattail/helper.log` shows
+in lines such as `magicsock: endpoints changed:`; the player's user name, which `logs/latest.log`
+and `cattail/helper.log` show in the instance folder's path (usually under `C:\Users\<name>`,
+`/Users/<name>` or `/home/<name>`); and your tailnet's MagicDNS domain name, the tailnet DNS name
+shown on the DNS page of the admin console.
 
 ## Contributing
 
