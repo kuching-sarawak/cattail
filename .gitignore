@@ -1,0 +1,30 @@
+/.secrets/*
+!/.secrets/README.md
+# A deployment file copied next to deployment.properties.example holds the key
+/deployment.properties
+# Build outputs
+/helper/cattail-helper
+/helper/bin/
+/helper/dist/
+/mod/build/
+/mod/.gradle/
+/mod/run/
+
+# Python
+__pycache__/
+/mod/runs/
+
+# Bundled helper exe + sha256 (written by scripts/build.sh)
+/mod/src/main/resources/helper/
+
+# Build script output (shippable jars + checksums)
+/dist/
+/mod/logs/
+/build.conf
+.DS_Store
+/.superpowers/
+/.idea
+
+# Local documentation, not published
+/docs/
+*.secret

@@ -1,0 +1,41 @@
+modLoader="javafml"
+loaderVersion="${loader_version_range}"
+license="MIT"
+issueTrackerURL="https://github.com/kuching-sarawak/cattail/issues"
+
+[[mods]]
+modId="cattail"
+version="${mod_version}"
+displayName="Cattail"
+logoFile="cattail.png"
+logoBlur=false
+authors="kuching-sarawak"
+description="Connects to the owner's Minecraft server over Tailscale; no account needed."
+displayURL="https://github.com/kuching-sarawak/cattail"
+# NeoForge's update checker (the marker on the Mods screen); update.json in the public repository
+# is bumped with every release (UpdateJsonTest pins it to mod_version).
+updateJSONURL="https://raw.githubusercontent.com/kuching-sarawak/cattail/main/update.json"
+
+[[mixins]]
+config="cattail.mixins.json"
+
+[[dependencies.cattail]]
+modId="neoforge"
+type="required"
+versionRange="${neo_version_range}"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.cattail]]
+modId="minecraft"
+type="required"
+versionRange="[1.21.1]"
+ordering="NONE"
+side="BOTH"
+
+[[dependencies.cattail]]
+modId="plasmovoice"
+type="optional"
+versionRange="[2.1.17,2.2)"
+ordering="NONE"
+side="BOTH"

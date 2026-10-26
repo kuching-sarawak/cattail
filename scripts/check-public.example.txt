@@ -1,0 +1,5 @@
+# Example denylist for scripts/check-public.sh: one fixed string per line, ASCII case-insensitive.
+# Keep your real list outside the public tree (it names what must not be published).
+example-tailnet
+my-server-hostname
+mydomain.example

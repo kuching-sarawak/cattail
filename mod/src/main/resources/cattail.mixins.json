@@ -1,0 +1,17 @@
+{
+  "required": true,
+  "package": "net.kuching.cattail.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "minVersion": "0.8",
+  "client": [
+    "ConnectScreenMixin",
+    "ConnectScreenRunnableMixin",
+    "JoinMultiplayerScreenMixin",
+    "ServerNameResolverMixin",
+    "ServerSelectionListEntryMixin",
+    "ServerStatusPingerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}
