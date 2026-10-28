@@ -160,6 +160,7 @@ if (( RUN_TEST )); then
         || die 1 "UpdateJsonTest failed; the files are written, fix them and run: cd mod && ./gradlew test -PskipHelper --tests '*UpdateJsonTest*'"
 fi
 say "done: $CURRENT -> $VERSION in mod/gradle.properties, update.json and docs/listing.md (when present); next:"
-echo "  git add mod/gradle.properties update.json docs/listing.md && git commit -m \"Bump to $VERSION\""
+# git commit -- <paths>, not git add: .gitignore lists /docs/, and git add exits 1 on a path under it.
+echo "  git commit -m \"Bump to $VERSION\" -- mod/gradle.properties update.json docs/listing.md"
 echo "  git tag v$VERSION && git push origin main v$VERSION   # after the merge to main"
 echo "  then draft and publish the internal release v$VERSION (docs/build.md, Publish a release)"
