@@ -28,6 +28,8 @@ Minecraft server over the owner's tailnet without installing Tailscale. Start wi
 | `mod/src/main/java/net/kuching/cattail/voice/` | Server-side check of the bundled Plasmo Voice config |
 | `scripts/build.sh` | The only way to build the shippable jars (full and `-novoice`, each with the three helpers) |
 | `scripts/bump-version.sh` | The only way to change the version: `mod_version` in `mod/gradle.properties`, `update.json` and the jar names in `docs/listing.md` together, then `UpdateJsonTest` (self-test `bump-version-test.sh`) |
+| `scripts/bump-tsnet.sh` | The way to update tsnet: `tailscale.com` in `helper/go.mod` and `go.sum` and `helper/THIRD_PARTY_LICENSES.md` together, under `GOTOOLCHAIN=local` (self-test `bump-tsnet-test.sh`) |
+| `.github/workflows/tsnet-bump.yml`, `tsnet-release.yml`, `scripts/tsnet-release.sh` | Maintainers only, not in the public tree: weekly `bump-tsnet.sh` (plus the next patch version when `tsnet-release.sh plan` allows) and the full build, then the pull request `tsnet/<version>`; merging it releases that version through `tsnet-release.sh release` and `release-public` (`docs/build.md`, tsnet updates; self-test `tsnet-release-test.sh`) |
 | `scripts/gen-helper-notices.sh` | Regenerates `helper/THIRD_PARTY_LICENSES.md` from `go.mod`; `build.sh` checks it |
 | `scripts/check-public.sh` | Public-tree gate run by the lint, the export and the release: a denylist plus built-in rules (self-test `check-public-test.sh`) |
 | `scripts/release-public.sh` | Maintainers only, not in the public tree: the only path to a public release (builds and gates the generic jars, opens the public draft pull request and draft release; `--publish` merges and publishes them, `--distribute` sends the published jars to the mod sites; run by the release workflow; self-test `release-public-test.sh`) |
@@ -52,7 +54,10 @@ scripts/e2e-specs.sh -PskipHelper          # live dev server + dev client: the s
 scripts/e2e-server-list.sh -PskipHelper   # dev server: the cattail object in the status JSON, live reload of cattail-server.toml; no display needed; CATTAIL_E2E_EXTRA_MODS=<dir of jars> adds other mods (BCC, NCR) to prove coexistence
 scripts/readme-lint.sh README.md PLAYERS.md # after editing either
 cd mod && ./gradlew test -PskipHelper      # also after editing README.md: ModLogoTest reads it
-cd helper && go get tailscale.com@v<x.y.z> && go mod tidy && cd .. && scripts/gen-helper-notices.sh   # bump tsnet, then the Go line above
+scripts/bump-tsnet.sh [v<x.y.z>]          # bump tsnet (default: the latest release), then scripts/build.sh --allow-dirty and the forced-relay soak; exit 3 = needs a newer pinned Go
+scripts/bump-tsnet-test.sh                 # after editing bump-tsnet.sh (needs env.sh; offline, a fixture module proxy)
+scripts/tsnet-release.sh release <commit> --dry-run   # maintainers only: what merging a tsnet pull request at <commit> would release
+scripts/tsnet-release-test.sh              # after editing tsnet-release.sh (a fixture repository and a gh stub)
 scripts/bump-version.sh <version>          # new release: mod_version, update.json and the listing's jar names together, then UpdateJsonTest
 scripts/build.sh --skip-tests              # generic jar; needs nothing in .secrets/
 scripts/build.sh --allow-dirty             # from uncommitted changes; a clean tree is required otherwise

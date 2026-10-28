@@ -37,19 +37,19 @@ Targets: windows/amd64, linux/amd64, darwin/arm64. Modules (42):
 - `github.com/x448/float16` v0.8.4
 - `go4.org/mem` v0.0.0-20240501181205-ae6ca9944745
 - `go4.org/netipx` v0.0.0-20260823151212-3075585bcbeb
-- `golang.org/x/crypto` v0.57.0
+- `golang.org/x/crypto` v0.58.0
 - `golang.org/x/exp` v0.0.0-20260908205506-85c1c2202aba
-- `golang.org/x/net` v0.59.0
+- `golang.org/x/net` v0.60.0
 - `golang.org/x/oauth2` v0.37.0
-- `golang.org/x/sync` v0.23.0
-- `golang.org/x/sys` v0.48.0
-- `golang.org/x/term` v0.46.0
-- `golang.org/x/text` v0.42.0
+- `golang.org/x/sync` v0.24.0
+- `golang.org/x/sys` v0.49.0
+- `golang.org/x/term` v0.47.0
+- `golang.org/x/text` v0.43.0
 - `golang.org/x/time` v0.16.0
 - `golang.zx2c4.com/wintun` v0.0.0-20230126152724-0fa3db229ce2
 - `golang.zx2c4.com/wireguard/windows` v1.0.1
 - `gvisor.dev/gvisor` v0.0.0-20260915211658-a6f909f08a72
-- `tailscale.com` v1.104.2
+- `tailscale.com` v1.104.4
 
 ## Go runtime and standard library
 
@@ -2070,7 +2070,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### golang.org/x/crypto v0.57.0: LICENSE
+### golang.org/x/crypto v0.58.0: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -2134,7 +2134,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### golang.org/x/net v0.59.0: LICENSE
+### golang.org/x/net v0.60.0: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -2198,7 +2198,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### golang.org/x/sync v0.23.0: LICENSE
+### golang.org/x/sync v0.24.0: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -2230,7 +2230,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### golang.org/x/sys v0.48.0: LICENSE
+### golang.org/x/sys v0.49.0: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -2262,7 +2262,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### golang.org/x/term v0.46.0: LICENSE
+### golang.org/x/term v0.47.0: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -2294,7 +2294,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### golang.org/x/text v0.42.0: LICENSE
+### golang.org/x/text v0.43.0: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -2663,7 +2663,7 @@ Some files carry the "BSD" license, noted at the top of each file:
    POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### tailscale.com v1.104.2: LICENSE
+### tailscale.com v1.104.4: LICENSE
 
 ```text
 BSD 3-Clause License
