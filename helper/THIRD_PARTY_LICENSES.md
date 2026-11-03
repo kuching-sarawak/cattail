@@ -49,7 +49,7 @@ Targets: windows/amd64, linux/amd64, darwin/arm64. Modules (42):
 - `golang.zx2c4.com/wintun` v0.0.0-20230126152724-0fa3db229ce2
 - `golang.zx2c4.com/wireguard/windows` v1.0.1
 - `gvisor.dev/gvisor` v0.0.0-20260915211658-a6f909f08a72
-- `tailscale.com` v1.104.4
+- `tailscale.com` v1.104.5
 
 ## Go runtime and standard library
 
@@ -2663,7 +2663,7 @@ Some files carry the "BSD" license, noted at the top of each file:
    POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### tailscale.com v1.104.4: LICENSE
+### tailscale.com v1.104.5: LICENSE
 
 ```text
 BSD 3-Clause License
