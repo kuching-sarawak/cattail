@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
 # Self-check for scripts/bump-tsnet.sh: runs it in a throwaway git repository holding a copy of
-# the script, a fixture helper module (helper/go.mod requiring tailscale.com, a main package that
+# the script and of scripts/env.sh, a fixture helper module (helper/go.mod requiring tailscale.com, a main package that
 # imports tailscale.com/tsnet, a committed go.sum and THIRD_PARTY_LICENSES.md) and a stub
 # scripts/gen-helper-notices.sh that logs its arguments. Go resolves tailscale.com from a fixture
 # module proxy on disk (GOPROXY=file://...), never from the network: v1.0.0, v1.2.0 and
 # v1.3.0-pre are listed (so the latest release is v1.2.0), v1.4.0 is fetchable but unlisted and
-# declares go 1.99, newer than any installed Go.
+# declares go 1.99, newer than any installed Go, v1.5.0 is fetchable but unlisted and declares
+# go 1.23, a language version that names no release. The proxy lists the toolchain go1.99.0 without
+# holding it; newer_go_switch puts a stub of that name on PATH, where go looks before downloading.
 #
 #   scripts/bump-tsnet-test.sh
 #
 # Cases: bump_latest (go.mod and go.sum rewritten, the notices script called with no argument,
 # next steps printed), bump_explicit, already_current (nothing written, notices not run),
-# downgrade, prerelease, bad_version (four shapes), needs_newer_go (exit 3, files restored),
-# unknown_version (exit 1, files restored), notices_fails (exit 1, files restored), dirty_file
-# (each of the three files), usage.
+# downgrade, prerelease, bad_version (four shapes), newer_go_switch (go get and go mod tidy are
+# handed to the Go the new version requires, exit 0), newer_go_unavailable (that Go cannot be
+# had: exit 1, files restored), short_go_line (the new version leaves a go line that
+# scripts/env.sh cannot build from: exit 1, files restored), unknown_version (exit 1, files restored), notices_fails (exit 1,
+# files restored), dirty_file (each of the three files), usage.
 # Needs git, python3 and go (source scripts/env.sh). Exit 0 = every case behaved, 1 = at least
 # one did not.
 set -Eeuo pipefail
@@ -28,7 +32,10 @@ export GIT_CONFIG_GLOBAL="$WORK/gitconfig" GIT_CONFIG_NOSYSTEM=1
 : > "$GIT_CONFIG_GLOBAL"
 # Go: no user go.env, the fixture proxy only, no checksum database, a private module cache.
 export GOENV=off GOPROXY="file://$WORK/proxy" GOSUMDB=off GOMODCACHE="$WORK/modcache" GOFLAGS=-mod=mod
-unset GOTOOLCHAIN
+# GOTOOLCHAIN in the shape scripts/env.sh gives it (go<release>+auto), naming the installed Go so
+# that nothing has to be downloaded.
+GOTOOLCHAIN="$(GOTOOLCHAIN=local go env GOVERSION)+auto"
+export GOTOOLCHAIN
 export NOTICES_LOG="$WORK/notices.log"
 
 # module_version <version> <go directive> <listed: 1 or 0>: one version of the fixture
@@ -57,6 +64,23 @@ module_version v1.0.0 1.22 1
 module_version v1.2.0 1.22 1
 module_version v1.3.0-pre 1.22 1
 module_version v1.4.0 1.99 0
+module_version v1.5.0 1.23 0
+# The toolchains the proxy offers, which is how go picks the release for "go >= 1.99".
+mkdir -p "$WORK/proxy/golang.org/toolchain/@v"
+for p in linux-amd64 linux-arm64 darwin-arm64 darwin-amd64; do
+    echo "v0.0.1-go1.99.0.$p"
+done > "$WORK/proxy/golang.org/toolchain/@v/list"
+# The stub go1.99.0: logs its arguments and, for go get, writes the go line that Go would.
+export NEWER_GO_LOG="$WORK/newer-go.log"
+mkdir -p "$WORK/newer-go"
+cat > "$WORK/newer-go/go1.99.0" <<'STUB'
+#!/usr/bin/env bash
+printf '[%s]\n' "$*" >> "$NEWER_GO_LOG"
+if [[ "${1:-}" == get ]]; then
+    sed 's/^go .*/go 1.99.0/' go.mod > go.mod.new && mv go.mod.new go.mod
+fi
+STUB
+chmod +x "$WORK/newer-go/go1.99.0"
 
 # The fixture helper module at tailscale.com v1.0.0, tidied once; every case starts from a copy.
 TEMPLATE="$WORK/template"
@@ -64,7 +88,7 @@ mkdir -p "$TEMPLATE/scripts" "$TEMPLATE/helper/cmd/cattail-helper"
 cat > "$TEMPLATE/helper/go.mod" <<'EOF'
 module github.com/kuching-sarawak/cattail/helper
 
-go 1.22
+go 1.22.0
 
 require tailscale.com v1.0.0
 EOF
@@ -91,7 +115,7 @@ reset() {
     local r="$WORK/repo"
     rm -rf "$r"
     cp -R "$TEMPLATE" "$r"
-    cp -p "$ROOT/scripts/bump-tsnet.sh" "$r/scripts/"
+    cp -p "$ROOT/scripts/bump-tsnet.sh" "$ROOT/scripts/env.sh" "$r/scripts/"
     if [[ -n "${1:-}" ]]; then
         (cd "$r/helper" && go get "tailscale.com@$1" && go mod tidy) > /dev/null 2>&1
     fi
@@ -132,7 +156,7 @@ expect_bumped_to() {
     [[ "$(required)" == "$1" ]] || bad "go.mod requires '$(required)', expected $1"
     grep -q "^tailscale.com $1 " "$WORK/repo/helper/go.sum" || bad "go.sum has no $1 line"
     ! grep -q "^tailscale.com v1.0.0 " "$WORK/repo/helper/go.sum" || bad "go.sum still has the v1.0.0 line (not tidied)"
-    grep -q '^go 1.22$' "$WORK/repo/helper/go.mod" || bad "the go directive changed"
+    grep -q '^go 1.22.0$' "$WORK/repo/helper/go.mod" || bad "the go directive changed"
     [[ "$(cat "$NOTICES_LOG")" == "[]" ]] || bad "the notices script was called as '$(cat "$NOTICES_LOG")', expected once with no argument"
 }
 
@@ -141,6 +165,8 @@ run
 expect_rc 0
 expect_bumped_to v1.2.0
 expect_out 'tailscale.com v1.0.0 -> v1.2.0' 'scripts/build.sh' 'docs/acceptance.md' 'Bump tsnet to v1.2.0'
+[[ "$OUT" != *'Go 1.22.0 ->'* ]] || bad "a Go change was reported for a version that needs none"
+[[ "$OUT" != *'install-toolchain.sh'* ]] || bad "the toolchain script is named as a next step although Go did not change"
 finish
 
 begin bump_explicit
@@ -184,14 +210,28 @@ for v in 1.2.0 v1.2 latest 'v1.2.0 '; do
 done
 finish
 
-begin needs_newer_go
+begin newer_go_switch
+: > "$NEWER_GO_LOG"
+PATH="$WORK/newer-go:$PATH" run v1.4.0
+expect_rc 0
+expect_out 'tailscale.com v1.0.0 -> v1.4.0' 'Go 1.22.0 -> 1.99.0' 'bash scripts/install-toolchain.sh'
+[[ "$(cat "$NEWER_GO_LOG")" == $'[get tailscale.com@v1.4.0]\n[mod tidy]' ]] \
+    || bad "go1.99.0 was called as '$(cat "$NEWER_GO_LOG")', expected go get, then go mod tidy"
+[[ "$(cat "$NOTICES_LOG")" == "[]" ]] || bad "the notices script was called as '$(cat "$NOTICES_LOG")', expected once with no argument"
+finish
+
+begin newer_go_unavailable
 run v1.4.0
-expect_rc 3
-expect_out 'needs a newer Go' 'Go 1.99' 'scripts/install-toolchain.sh' 'scripts/env.sh'
-# Go's own message: with GOTOOLCHAIN=local it names that setting; with the default (auto) it says
-# "switching to go >= 1.99" and, given a real proxy, downloads that toolchain and succeeds.
-expect_out 'GOTOOLCHAIN=local'
-[[ "$OUT" != *'switching to go'* ]] || bad "go tried to switch toolchains (GOTOOLCHAIN is not local)"
+expect_rc 1
+expect_out 'go1.99.0' 'go get tailscale.com@v1.4.0 failed'
+expect_unchanged
+[[ ! -s "$NOTICES_LOG" ]] || bad "the notices script ran"
+finish
+
+begin short_go_line
+run v1.5.0
+expect_rc 1
+expect_out 'helper/go.mod' 'go <major>.<minor>.<patch>' 'tailscale.com v1.5.0'
 expect_unchanged
 [[ ! -s "$NOTICES_LOG" ]] || bad "the notices script ran"
 finish

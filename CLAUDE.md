@@ -28,7 +28,8 @@ Minecraft server over the owner's tailnet without installing Tailscale. Start wi
 | `mod/src/main/java/net/kuching/cattail/voice/` | Server-side check of the bundled Plasmo Voice config |
 | `scripts/build.sh` | The only way to build the shippable jars (full and `-novoice`, each with the three helpers) |
 | `scripts/bump-version.sh` | The only way to change the version: `mod_version` in `mod/gradle.properties`, `update.json` and the jar names in `docs/listing.md` together, then `UpdateJsonTest` (self-test `bump-version-test.sh`) |
-| `scripts/bump-tsnet.sh` | The way to update tsnet: `tailscale.com` in `helper/go.mod` and `go.sum` and `helper/THIRD_PARTY_LICENSES.md` together, under `GOTOOLCHAIN=local` (self-test `bump-tsnet-test.sh`) |
+| `scripts/bump-tsnet.sh` | The way to update tsnet: `tailscale.com` in `helper/go.mod` and `go.sum` and `helper/THIRD_PARTY_LICENSES.md` together; the `go` line of `helper/go.mod` follows the Go that tsnet requires (self-test `bump-tsnet-test.sh`) |
+| `scripts/env.sh` | Every shell sources it: the installed Go is only the bootstrap, `GOTOOLCHAIN=go<the go line of helper/go.mod>+auto` makes it build with exactly that Go (self-test `env-test.sh`) |
 | `.github/workflows/tsnet-bump.yml`, `tsnet-release.yml`, `scripts/tsnet-release.sh` | Maintainers only, not in the public tree: daily `bump-tsnet.sh` (plus the next patch version when `tsnet-release.sh plan` allows) and the full build, then the pull request `tsnet/<version>`; merging it releases that version through `tsnet-release.sh release` and `release-public` (`docs/build.md`, tsnet updates; self-test `tsnet-release-test.sh`) |
 | `scripts/gen-helper-notices.sh` | Regenerates `helper/THIRD_PARTY_LICENSES.md` from `go.mod`; `build.sh` checks it |
 | `scripts/check-public.sh` | Public-tree gate run by the lint, the export and the release: a denylist plus built-in rules (self-test `check-public-test.sh`) |
@@ -54,8 +55,11 @@ scripts/e2e-specs.sh -PskipHelper          # live dev server + dev client: the s
 scripts/e2e-server-list.sh -PskipHelper   # dev server: the cattail object in the status JSON, live reload of cattail-server.toml; no display needed; CATTAIL_E2E_EXTRA_MODS=<dir of jars> adds other mods (BCC, NCR) to prove coexistence
 scripts/readme-lint.sh README.md PLAYERS.md # after editing either
 cd mod && ./gradlew test -PskipHelper      # also after editing README.md: ModLogoTest reads it
-scripts/bump-tsnet.sh [v<x.y.z>]          # bump tsnet (default: the latest release), then scripts/build.sh --allow-dirty and the forced-relay soak; exit 3 = needs a newer pinned Go
+scripts/bump-tsnet.sh [v<x.y.z>]          # bump tsnet (default: the latest release), then scripts/build.sh --allow-dirty and the forced-relay soak; a newer Go that tsnet requires comes with it (the go line of helper/go.mod)
 scripts/bump-tsnet-test.sh                 # after editing bump-tsnet.sh (needs env.sh; offline, a fixture module proxy)
+scripts/env-test.sh                        # after editing env.sh (downloads the Go of helper/go.mod once when it is not the installed one)
+scripts/install-toolchain-test.sh          # after editing install-toolchain.sh (offline, stub Go and JDK under a throwaway HOME)
+bash scripts/install-toolchain.sh          # also after the go line of helper/go.mod moves: rebuilds staticcheck by that Go
 scripts/tsnet-release.sh release <commit> --dry-run   # maintainers only: what merging a tsnet pull request at <commit> would release
 scripts/tsnet-release-test.sh              # after editing tsnet-release.sh (a fixture repository and a gh stub)
 scripts/bump-version.sh <version>          # new release: mod_version, update.json and the listing's jar names together, then UpdateJsonTest

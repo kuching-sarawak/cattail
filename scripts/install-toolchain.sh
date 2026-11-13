@@ -13,7 +13,9 @@
 # updating the file names AND the checksums here.
 set -Eeuo pipefail
 
-GO_VERSION="1.27.3"
+# The bootstrap Go. It does not have to follow helper/go.mod: scripts/env.sh makes it run the
+# release named on the go line there, which Go downloads and verifies itself when they differ.
+GO_VERSION="1.27.4"
 JDK_RELEASE="jdk-21.0.12.1+1"
 JDK_NUM="${JDK_RELEASE#jdk-}"          # 21.0.12.1+1
 JDK_FILE_VER="${JDK_NUM/+/_}"          # 21.0.12.1_1
@@ -22,19 +24,19 @@ STATICCHECK_VERSION="2026.2.2"
 case "$(uname -s)/$(uname -m)" in
   Linux/x86_64)
     GO_FILE="go${GO_VERSION}.linux-amd64.tar.gz"
-    GO_SUM="65efbc80fdc1fa2cd2631cad5b481777a68e8725f34e89f50fc6ac714e379b40"
+    GO_SUM="7226736c2339719cda28fbf3a54d71aa63bcefe376e98cef00034268dab24840"
     JDK_FILE="OpenJDK21U-jdk_x64_linux_hotspot_${JDK_FILE_VER}.tar.gz"
     JDK_SUM="ce79869e1307ed8ee1e2baa86a412b1eb5b75d10a01006d788a6f968bcfaee94"
     ;;
   Darwin/arm64)
     GO_FILE="go${GO_VERSION}.darwin-arm64.tar.gz"
-    GO_SUM="dd3908cf20959d798c1e06ebe5b72213f0505ce01373b40ce3110975a6cd99c2"
+    GO_SUM="91a44a2b8a716600ad94a4f143e156116620db8828086a6e3602291be9bd0bb4"
     JDK_FILE="OpenJDK21U-jdk_aarch64_mac_hotspot_${JDK_FILE_VER}.tar.gz"
     JDK_SUM="3623232f33a9c3baadf304480b2535f9a3cba8a58d42ecbb438ba267315d9998"
     ;;
   Darwin/x86_64)
     GO_FILE="go${GO_VERSION}.darwin-amd64.tar.gz"
-    GO_SUM="b6f8e931e4ab497fcde6da8ae4499a58f9d258e55c8a80824a516eae5950a750"
+    GO_SUM="2b799377704ef12db39bd254995d5c348c9cc8d86562ca817724390e56c38f43"
     JDK_FILE="OpenJDK21U-jdk_x64_mac_hotspot_${JDK_FILE_VER}.tar.gz"
     JDK_SUM="44db0f08196daf19a47f90d13388b0c943b67663cb537f998fe29e836fa842ce"
     ;;
@@ -117,13 +119,27 @@ else
 fi
 
 # --- staticcheck --------------------------------------------------------------
+# Built by the Go that builds the helper (env.sh: the go line of helper/go.mod), and rebuilt
+# when that is another Go than the one that built it: a staticcheck built by an older Go minor
+# refuses the module ("requires newer Go version"). So run this script again after the go line
+# moves. Self-check: scripts/install-toolchain-test.sh.
 # shellcheck source=env.sh
 source "$(dirname "${BASH_SOURCE[0]}")/env.sh"
+HELPER_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../helper" && pwd)"
+BUILD_GO="$(cd "$HELPER_DIR" && go env GOVERSION)"
+BUILT_BY=""
 if command -v staticcheck >/dev/null && staticcheck -version | grep -q "^staticcheck ${STATICCHECK_VERSION} "; then
-  echo "staticcheck ${STATICCHECK_VERSION}: already installed"
+  BUILT_BY="$(go version "$(command -v staticcheck)" | sed 's/^.*: //')"
+fi
+if [[ -n "$BUILT_BY" && "$BUILT_BY" == "$BUILD_GO" ]]; then
+  echo "staticcheck ${STATICCHECK_VERSION} (built by ${BUILD_GO}): already installed"
 else
-  echo "staticcheck ${STATICCHECK_VERSION}: installing"
-  go install "honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}"
+  if [[ -n "$BUILT_BY" ]]; then
+    echo "staticcheck ${STATICCHECK_VERSION}: built by ${BUILT_BY}, the helper builds with ${BUILD_GO}: rebuilding"
+  else
+    echo "staticcheck ${STATICCHECK_VERSION}: installing (built by ${BUILD_GO})"
+  fi
+  (cd "$HELPER_DIR" && go install "honnef.co/go/tools/cmd/staticcheck@${STATICCHECK_VERSION}")
 fi
 
 echo "Toolchain ready. Run: source scripts/env.sh"

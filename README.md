@@ -1262,7 +1262,9 @@ scripts/build.sh
 - `scripts/install-toolchain.sh` installs the pinned Go, Temurin JDK and staticcheck under
   `~/.local/toolchains`. It checks every download against the SHA-256 pinned in the script and
   needs no root. Running it again is safe.
-- `source scripts/env.sh` puts that toolchain on your `PATH`. Run it in every new shell.
+- `source scripts/env.sh` puts that toolchain on your `PATH`. Run it in every new shell. It also
+  selects the Go release named in `helper/go.mod`; when that is not the installed one, Go
+  downloads it once and verifies it against the Go checksum database.
 - `scripts/build.sh` runs `go vet`, `staticcheck` and `go test` on the helper, cross-compiles the
   helper for Windows x64, Linux x64 and macOS on Apple silicon, builds the mod with its tests,
   runs the client smoke test (under Xvfb on Linux, on the desktop on macOS), and writes the jar.

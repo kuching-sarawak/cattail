@@ -5,7 +5,7 @@
 Linux x86-64 or macOS. Install the pinned toolchain once, then load it in every shell:
 
 ```bash
-bash scripts/install-toolchain.sh   # Go 1.27.3, Temurin JDK 21, staticcheck 2026.2.2
+bash scripts/install-toolchain.sh   # Go 1.27.4 (the bootstrap), Temurin JDK 21, staticcheck 2026.2.2
 source scripts/env.sh
 ```
 
@@ -36,6 +36,11 @@ cd mod && ./gradlew test -PskipHelper
 - For changes to mixins or loading: `scripts/smoke-client.sh -PskipHelper` and
   `scripts/smoke-server.sh -PskipHelper`.
 - When touching `scripts/check-public.sh`, run `scripts/check-public-test.sh`.
+- When touching `scripts/env.sh`, run `scripts/env-test.sh`; when touching
+  `scripts/install-toolchain.sh`, run `scripts/install-toolchain-test.sh`. The helper is built
+  with the Go on the `go` line of `helper/go.mod`: `env.sh` selects it, and Go downloads it once
+  when it is not the installed one. After that line moves, run `scripts/install-toolchain.sh`
+  again: it rebuilds staticcheck by the new Go.
 - When touching the release script (`scripts/release-public.sh`, maintainers only, not in the
   public tree), run `scripts/release-public-test.sh`; it needs `zip`, `perl` and `python3`.
 - When touching `README.md` or `PLAYERS.md`, run `scripts/readme-lint.sh README.md PLAYERS.md`;
