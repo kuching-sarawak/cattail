@@ -33,7 +33,7 @@ Targets: windows/amd64, linux/amd64, darwin/arm64. Modules (42):
 - `github.com/tailscale/hujson` v0.0.0-20260727124030-b80ff77dac4f
 - `github.com/tailscale/peercred` v0.0.0-20250107143737-35a0c7bd7edc
 - `github.com/tailscale/web-client-prebuilt` v0.0.0-20260917222731-e0ed2d0d0fea
-- `github.com/tailscale/wireguard-go` v0.0.0-20260928213032-417aef361226
+- `github.com/tailscale/wireguard-go` v0.0.0-20261106233718-9e0ab45c16ca
 - `github.com/x448/float16` v0.8.4
 - `go4.org/mem` v0.0.0-20240501181205-ae6ca9944745
 - `go4.org/netipx` v0.0.0-20260823151212-3075585bcbeb
@@ -49,7 +49,7 @@ Targets: windows/amd64, linux/amd64, darwin/arm64. Modules (42):
 - `golang.zx2c4.com/wintun` v0.0.0-20230126152724-0fa3db229ce2
 - `golang.zx2c4.com/wireguard/windows` v1.0.1
 - `gvisor.dev/gvisor` v0.0.0-20260915211658-a6f909f08a72
-- `tailscale.com` v1.104.5
+- `tailscale.com` v1.104.6
 
 ## Go runtime and standard library
 
@@ -1782,7 +1782,7 @@ OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### github.com/tailscale/wireguard-go v0.0.0-20260928213032-417aef361226: LICENSE
+### github.com/tailscale/wireguard-go v0.0.0-20261106233718-9e0ab45c16ca: LICENSE
 
 ```text
 Permission is hereby granted, free of charge, to any person obtaining a copy of
@@ -2663,7 +2663,7 @@ Some files carry the "BSD" license, noted at the top of each file:
    POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### tailscale.com v1.104.5: LICENSE
+### tailscale.com v1.104.6: LICENSE
 
 ```text
 BSD 3-Clause License

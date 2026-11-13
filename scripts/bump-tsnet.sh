@@ -9,16 +9,19 @@
 #            module proxy reports (go list -m -u)
 #
 # Edits, and nothing else: helper/go.mod and helper/go.sum (go get tailscale.com@<version>, then
-# go mod tidy) and helper/THIRD_PARTY_LICENSES.md (scripts/gen-helper-notices.sh). Go runs with
-# GOTOOLCHAIN=local, so a tailscale.com that needs a newer Go than the pinned toolchain fails
-# here instead of fetching an unpinned toolchain. Prints the next steps: the full build (vet,
-# staticcheck, every test and the client smokes), the soak over a forced relay
-# (docs/acceptance.md) and the commit. A run that finds nothing newer writes nothing (exit 0).
-# Refuses (exit 2, nothing written): a malformed version; a version older than the current one;
-# uncommitted changes to any of the three files (so the commit holds only the bump). Exit 3: the
-# version needs a newer Go than the pinned one (bump GO_VERSION and its checksums in
-# scripts/install-toolchain.sh and GOROOT in scripts/env.sh first). Exit 1: go list, go get,
-# go mod tidy or the notices script failed. Exits 1 and 3 restore the three files.
+# go mod tidy) and helper/THIRD_PARTY_LICENSES.md (scripts/gen-helper-notices.sh). The helper's
+# Go follows tailscale.com: when the new version requires a newer Go, go get raises the go line
+# of helper/go.mod to it and go switches to that release for the rest of the run (GOTOOLCHAIN
+# from scripts/env.sh allows it; go downloads the release into the module cache and verifies it
+# against the Go checksum database), so the bump carries the Go version with it and every later
+# build uses it. Prints the next steps: the full build (vet, staticcheck, every test and the
+# client smokes), the soak over a forced relay (docs/acceptance.md) and the commit. A run that
+# finds nothing newer writes nothing (exit 0). Refuses (exit 2, nothing written): a malformed
+# version; a version older than the current one; uncommitted changes to any of the three files
+# (so the commit holds only the bump). Exit 1: go list, go get (also when the Go it requires
+# cannot be had), go mod tidy or the notices script failed, or the new go line names no Go
+# release (go <major>.<minor>, which scripts/env.sh cannot build from); the three files are
+# restored.
 # Needs the toolchain from scripts/env.sh. Self-check: scripts/bump-tsnet-test.sh.
 set -Eeuo pipefail
 ME=bump-tsnet.sh
@@ -54,7 +57,7 @@ if [[ -n "$TARGET" && ! "$TARGET" =~ $RE_VERSION ]]; then
     die 2 "version $TARGET is not v<major>.<minor>.<patch> (no pre-release, leading v)"
 fi
 command -v go > /dev/null || die 2 "go not found (source scripts/env.sh)"
-export GOTOOLCHAIN=local GOFLAGS=-mod=mod
+export GOFLAGS=-mod=mod
 
 if git -C "$ROOT" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
     changes="$(git -C "$ROOT" status --porcelain -- "${FILES[@]}")" || die 2 "git status failed in $ROOT"
@@ -100,19 +103,34 @@ restore() {
 }
 trap 'rm -rf "$BACKUP"' EXIT
 
+# build_go: the Go release scripts/env.sh builds the helper with, for helper/go.mod as it is
+# now. env.sh owns that rule; a go line it cannot build from fails here, with its message.
+build_go() {
+    (
+        # shellcheck source=env.sh
+        # || exit: set -e is off inside the if below, and GOTOOLCHAIN may be inherited.
+        source "$ROOT/scripts/env.sh" > /dev/null || exit 1
+        v="${GOTOOLCHAIN%+auto}"
+        printf '%s' "${v#go}"
+    )
+}
+GO_BEFORE="$(build_go)" || die 1 "scripts/env.sh cannot tell which Go builds the helper"
 say "tailscale.com $CURRENT -> $TARGET"
 if ! out="$(go get "tailscale.com@$TARGET" 2>&1)"; then
     printf '%s\n' "$out" >&2
     restore
-    needs="$(sed -n 's/.* requires go >= \([^ ]*\) (running go .*/\1/p' <<< "$out" | head -n 1)"
-    if [[ -n "$needs" ]]; then
-        die 3 "tailscale.com $TARGET needs a newer Go than the pinned one: Go $needs. Bump GO_VERSION and its checksums in scripts/install-toolchain.sh and GOROOT in scripts/env.sh, install it, then run this again"
-    fi
     die 1 "go get tailscale.com@$TARGET failed"
 fi
 if ! go mod tidy; then
     restore
     die 1 "go mod tidy failed"
+fi
+if ! GO_AFTER="$(build_go)"; then
+    restore
+    die 1 "tailscale.com $TARGET leaves helper/go.mod with a go line that no build can use (above)"
+fi
+if [[ "$GO_AFTER" != "$GO_BEFORE" ]]; then
+    say "Go $GO_BEFORE -> $GO_AFTER: tailscale.com $TARGET requires it; the go line of helper/go.mod carries it to every build"
 fi
 say "helper/THIRD_PARTY_LICENSES.md"
 if ! "$ROOT/scripts/gen-helper-notices.sh"; then
@@ -121,6 +139,9 @@ if ! "$ROOT/scripts/gen-helper-notices.sh"; then
 fi
 
 say "done: tailscale.com $CURRENT -> $TARGET in helper/go.mod, helper/go.sum and helper/THIRD_PARTY_LICENSES.md; next:"
+if [[ "$GO_AFTER" != "$GO_BEFORE" ]]; then
+    echo "  bash scripts/install-toolchain.sh   # staticcheck must be built by the Go that builds the helper, now Go $GO_AFTER"
+fi
 echo "  scripts/build.sh --allow-dirty   # vet and staticcheck for every target, go test, Gradle tests, client smokes"
 echo "  the soak over a forced DERP relay (docs/acceptance.md), then the live join on each OS you can"
 echo "  git add ${FILES[*]} && git commit -m \"Bump tsnet to $TARGET\""
