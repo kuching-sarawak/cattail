@@ -49,11 +49,11 @@ Targets: windows/amd64, linux/amd64, darwin/arm64. Modules (42):
 - `golang.zx2c4.com/wintun` v0.0.0-20230126152724-0fa3db229ce2
 - `golang.zx2c4.com/wireguard/windows` v1.0.1
 - `gvisor.dev/gvisor` v0.0.0-20260915211658-a6f909f08a72
-- `tailscale.com` v1.104.6
+- `tailscale.com` v1.104.7
 
 ## Go runtime and standard library
 
-### Go go1.27.3: LICENSE
+### Go go1.27.4: LICENSE
 
 ```text
 Copyright 2009 The Go Authors.
@@ -85,7 +85,7 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### Go go1.27.3: PATENTS
+### Go go1.27.4: PATENTS
 
 ```text
 Additional IP Rights Grant (Patents)
@@ -2663,7 +2663,7 @@ Some files carry the "BSD" license, noted at the top of each file:
    POSSIBILITY OF SUCH DAMAGE.
 ```
 
-### tailscale.com v1.104.6: LICENSE
+### tailscale.com v1.104.7: LICENSE
 
 ```text
 BSD 3-Clause License
